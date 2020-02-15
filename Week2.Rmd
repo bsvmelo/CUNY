@@ -1,0 +1,111 @@
+---
+title: "Week 2"
+author: "Bruno de Melo"
+date: "2/9/2020"
+output: html_document
+---
+
+
+## SQL  and R
+## Movies Rating
+## Installing packages and libraries
+I could not find a way to make 100% reproducible mainly due to username/password. My solution was to create a super-user in MySQL who does not have a password.
+
+```{r}
+#install.packages("RMySQL")
+#install.packages("dplyr")
+library(RMySQL)
+library(DBI)
+library(dplyr)
+
+db_user <- 'newuser'
+db_password <- NULL
+db_name <- NULL 
+db_host <- NULL 
+db_port <- 3306
+
+drv<-dbDriver("MySQL")
+movies <-  dbConnect(drv, user = db_user, password = db_password, dbname = db_name, host = db_host, port = db_port)
+```
+
+# Create database
+Database Movie_ratings is created
+
+```{r}
+dbSendQuery(movies, "CREATE DATABASE movie_ratings;")
+
+dbSendQuery(movies, "USE movie_ratings")
+```
+# Create table
+Table ratings is created
+```{r}
+query<-"CREATE TABLE ratings (Friends TEXT, Movie TEXT, Rating TEXT);"
+
+#Send the query to MySQL for execution
+results <- dbSendQuery(movies, query)
+dbClearResult(results)
+```
+
+# Insert data into tables - Brute Force Method
+```{r}
+query <- "INSERT INTO 
+    ratings(Friends, Movie, Rating)
+VALUES
+('Friend1','Avengers: Endgame','5'),
+('Friend1','The Lion King','10'),
+('Friend1','Star Wars: The Rise of Skywalker',NULL),
+('Friend1','Joker',NULL),
+('Friend1','Spider-Man: Far From Home',NULL),
+('Friend1','Jumanji: The Next Level',NULL),
+('Friend2','Avengers: Endgame',NULL),
+('Friend2','The Lion King',NULL),
+('Friend2','Star Wars: The Rise of Skywalker','8'),
+('Friend2','Joker','8'),
+('Friend2','Spider-Man: Far From Home','9'),
+('Friend2','Jumanji: The Next Level',NULL),
+('Friend3','Avengers: Endgame','10'),
+('Friend3','The Lion King',NULL),
+('Friend3','Star Wars: The Rise of Skywalker',NULL),
+('Friend3','Joker',NULL),
+('Friend3','Spider-Man: Far From Home',NULL),
+('Friend3','Jumanji: The Next Level',NULL),
+('Friend4','Avengers: Endgame','5'),
+('Friend4','The Lion King','7'),
+('Friend4','Star Wars: The Rise of Skywalker','9'),
+('Friend4','Joker','9'),
+('Friend4','Spider-Man: Far From Home','4'),
+('Friend4','Jumanji: The Next Level','6'),
+('Friend5','Avengers: Endgame',NULL),
+('Friend5','The Lion King',NULL),
+('Friend5','Star Wars: The Rise of Skywalker',NULL),
+('Friend5','Joker',NULL),
+('Friend5','Spider-Man: Far From Home','5'),
+('Friend5','Jumanji: The Next Level','9');"
+results <- dbSendQuery(movies, query)
+dbClearResult(results)
+```
+## Fetching dataset
+```{r}
+rs = dbSendQuery(movies, "select * from ratings")
+datar = fetch(rs, n=-1)
+dbClearResult(rs)
+```
+## Displaying table in R
+```{r}
+head(datar)
+```
+## Dealing with Missing Values or NAs
+You also can find the sum and the percentage of missings in your dataset with the code below:
+```{r}
+Number_of_missing_ratings<-sum(is.na(datar))
+Pct_missing_ratings<-mean(is.na(datar))
+Number_of_missing_ratings
+Pct_missing_ratings
+
+```
+## This function remove the missings
+```{r}
+na.omit(datar)
+```
+
+
