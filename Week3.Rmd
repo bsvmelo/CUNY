@@ -1,0 +1,99 @@
+---
+title: "Week3"
+author: "Bruno de Melo"
+date: "2/15/2020"
+output: html_document
+---
+## WEEK 3
+
+## Exercise 1 - Find "DATA" or "STATISTICS"
+Downloading majors list from 538 website
+```{r}
+library(tidyverse)
+majors <- read.csv(file = 'https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv')
+```
+Using str_subset to identify majors containing Data and statistics
+
+```{r}
+ex_1<-str_subset(majors$Major, "DATA|STATISTICS")
+ex_1
+```
+## Exercise 2
+Concatenating strings
+- I'm a bit confused with this one. 
+c("a", "b", "c") is usually a way to stored multiple strings into a character vector. It seems the exercise is asking for the inverse, to go from a character vector to the function?
+Or does the exercise wants from the character vector to a single string that looks like the c() function? A have two solutions,using the 'fruit' list:
+1: Here, it builds a single string with double quotes around each element
+
+```{r}
+x<-c(fruit)
+y<-str_c("\"", x , "\"" , collapse = ",")
+writeLines(y)
+y<-c("c(",str_c("\"", x , "\"" , collapse = ","),")")
+```
+2: Here it builds a single string contains c( in the beginning and ) at the end
+```{r}
+z<-c(fruit)
+yy<-c("c(",str_c("\"", z , "\"" , collapse = ","),")")
+writeLines(yy)
+```
+
+## Exercise 3
+(.)\1\1 <- matches same character three times in a row at any position in a string. Code below shows for same character two times in a row. Hence, adding an additional \1 makes it three times in a row. In the 'fruit' list, it seems there are no matches like bbb or ccc.
+```{r}
+str_view(fruit,"(.)\\1",match = TRUE)
+```
+
+(.)(.)\\2\\1 <-matches pair of characters where the second character of the first group is the first character in the second group, like eppe in pepper
+```{r}
+str_view(fruit,"(.)(.)\\2\\1",match = TRUE)
+```
+
+(..)\1 <- matches two characters that are repeated like anan in banana
+```{r}
+str_view(fruit,"(..)\\1", match = TRUE)
+```
+
+(.).\\1.\\1 <- this matches a character, followed by any character, the first character, followed by any character, followed by first character again, like anana in banana
+```{r}
+str_view(fruit,"(.).\\1.\\1",match = TRUE)
+```
+
+(.)(.)(.).*\\3\\2\\1-> matches three characters, followed by any character, followed by characters of any length, in reverse order (3rd group first, 2nd group second and 1st group third), like cdefgzhuhjedc. 'Fruit' list doesn't have any matched for this expression but I found for (.)(.)(.).*\\2\\1 in clementine (entine)
+
+```{r}
+x<-str_view(fruit,"(.)(.)(.).*\\3\\2\\1",match = TRUE)
+x
+
+```
+
+
+```{r}
+y<-str_view(fruit,"(.)(.)(.).*\\2\\1",match = TRUE)
+y
+```
+
+## Exercise 4
+. Regex start and end with the same character
+Cannot find a solution
+
+. regex contains a repeated pair of letters
+I started with (..)\\1, like in the previous example which shows emem in remember but it seems too restrictive as it not picking up church
+```{r}
+str_view(words,"(..)\\1", match=TRUE)
+
+```
+I then added .* like in the previous example to account for any character of any length
+```{r}
+str_view(words,"(..).*\\1", match=TRUE)
+```
+. regex contains one letter repeated in at least three places
+using example above but with one character in the group (.).*\\1, gives two repeated letters
+```{r}
+str_view(words,"(.).*\\1", match=TRUE)
+```
+Adding an additional repetition, should do it
+```{r}
+str_view(words,"(.).*\\1.*\\1", match=TRUE)
+```
+
