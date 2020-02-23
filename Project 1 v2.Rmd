@@ -1,0 +1,105 @@
+---
+title: "Project 1"
+author: "Bruno de Melo"
+date: "2/23/2020"
+output: html_document
+---
+## Chess Cross Table Example
+Idea is to combine the relevant lines/row into one, transform the dataset into a structured table/frame and work from there to calculate the opponents' average.
+
+## Step 1
+Read file, do some manipulation to clean the data and save the clean dataset into a file, in order to easily convert it to a structured table. I don't delete the separator "|", as it will help later in converting the table into a structured data frame.
+
+```{r}
+# open connection and read lines
+library(tidyverse)
+con <- file('https://raw.githubusercontent.com/bsvmelo/CUNY/master/tournamentinfo.txt', open='r')
+w<-readLines(con)
+
+head(w,8)
+leng<-length(w)
+
+#for loop in the lines collection and do some cleaning
+
+for (i in 1:leng)
+{
+  if( i%%3 == 0 )
+     {
+         a<-w[i-1]
+         b<-w[i]
+
+# cleaning 
+        c<-paste(a,b)
+        c<-str_replace_all(c,"/","|")
+        c<-str_replace_all(c,"->","|")
+        c<-str_replace_all(c,"/ R:","|")
+        c<-str_replace_all(c,"R:","")
+        c<-str_trim(c, side="both")
+
+# writing the cleaning data set into a temp file
+        write(c,file="tempFile.txt", append=TRUE)
+  }
+}        
+
+# close connection
+        close(con)
+
+# assign structured data back to a table within R
+        
+        out<-read.table("tempFile.txt",header = TRUE, sep="|")
+       
+        head(out,5)
+```        
+## Step 2
+Here I create 2 temporary tables containing the main data that will populate the final output and also data containing the Rounds data, indexed by the player's number.
+Since both tables have the same number of rows, it will be easier to make a reference when calculating the average.
+
+```{r}
+# temporary tables
+
+        table1<-out[,c(1,2,11,3,13)]
+        table1$Average<-0
+        table2<-out[,c(1,4:10)] 
+# extracting non relevant data from the pre rating column
+        
+        table1$Rtg..Pre<-str_extract_all(table1$Rtg..Pre,"[[:digit:]]{3,4}","")
+```
+## Step 3
+This is the main for loop that checks in the second table, whether the player had a win, loss or draw, and looks for the respective opponent rating, and calculate the average      
+
+Logic is to go element by element, check for W,D,L, and look for the corresponding opponent number, and store his/her rating in a variable   
+
+``` {r}       
+        for (i in 1:nrow(table2))
+        {
+          nogames<-0
+          oppRtg<-0
+          result<-0
+          for (j in 2:ncol(table2)) 
+          {
+            if(substr(table2[i,j],1,1) == "W" | substr(table2[i,j],1,1) == "L" | substr(table2[i,j],1,1) == "D")
+            {
+              nogames <- nogames +1
+              # here I'm extracting the numeric value from the string "W  39" while taking advantage of the fixed length
+              noempty<- str_count(table2[i,j]," ")
+              opp<-substr(table2[i,j],noempty+2,5)
+              #here I store the opponent rating
+              oppRtg<-oppRtg+as.numeric(table1[opp,5])
+            }
+          }
+          # here the average is calculated and stored in table 1
+          result<-oppRtg/nogames
+          table1[i,6]<-round(result,0)
+        }
+```        
+## Step 4
+Final formatting to have the table ready to be exported to csv
+```{r}
+        final_table<-table1[,c(2:6)] 
+        names(final_table)<-c("Player’s Name","Player’s State","Total Number of Points","Player’s Pre-Rating","Average Pre Chess Rating of Opponents") 
+        write.csv(final_table, file="Project1-Bruno de Melo.csv")
+        head(final_table)
+        
+```
+
+
