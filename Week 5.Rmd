@@ -1,0 +1,179 @@
+---
+title: "Week 5"
+author: "Bruno de Melo"
+date: "2/28/2020"
+output: html_document
+---
+
+# Assignment 5 Tidying and Transforming Data
+
+Objective is to tidy and transform data in order to perform analysis to compare the arrival delays of two airlines.
+
+File is displayed below.
+
+
+```{r}
+
+library(tidyverse)
+library(scales)
+
+# Reading csv file, using [-3,] parameter to delet blank line between rows with data
+air1 <- read.csv(file = 'https://raw.githubusercontent.com/bsvmelo/CUNY/master/airline_data.csv')[-3,]
+
+head(air1)
+
+```
+# Tidying and transforming data
+
+Step 1: Changing column names.
+
+Step 2: Filling blank cells with Airline name.
+```{r}
+#Step 1
+names(air1)[1:2]<-c("Airline","Status")
+#Step 2
+air1[2,1]<-air1[1,1]
+air1[4,1]<-air1[3,1]
+head(air1)
+```
+Step 3: Using Gather() function to transform column with city names into a new variable. 
+```{r}
+#Step 3
+air2<-gather(air1[,3:7],key="City", value="No_Flights")
+head(air2)
+```
+Step 4: Transpose columns Airline and Status to newly created data frame - air2.
+
+```{r}
+#Step 4
+air2[,3:4]<-air1[,1:2]
+air2[,4]<-str_trim(air2[,4])
+
+head(air2)
+
+```
+
+# Exploratory Data Analysis
+
+For a quick visual inspection, plot below shows Number of flights by Airline by City. 
+
+
+```{r}
+ggplot(air2, aes(fill=City, x=Airline, y=No_Flights)) + geom_col(position="stack") + ylab("Number of Flights")
+```
+
+Some highlights:
+
+1: AM West has more flights than Alaska.
+
+2: AM West has more flights to Phoenix than to any other city.
+
+3: Alaska has more flights to Seattle than to any other city.
+
+
+Another visualization, showing Number of flights by Airline by Status
+```{r}
+ggplot(air2, aes(fill=Status, x=Airline, y=No_Flights)) + geom_col(position="stack") + ylab("Number of Flights")
+
+```
+
+Conclusion:
+Visually, it seems that AM West might have more delayed arrivals than Alaska, in aggregate. However, we need to make each set of stacked bars the same height, for a proper comparison.
+
+```{r}
+ggplot(air2, aes(fill=Status, x=Airline, y=No_Flights)) + geom_col(position="fill") + ylab("Number of Flights")
+```
+
+
+My first impression is not correct! AM West is more punctual than Alaska.
+
+
+# EDA - by City
+
+
+I now show a multiple bar charts tiling showing Status breakdown by City by Airlines for a quick visual comparative inspection. 
+
+```{r}
+ggplot(air2, aes(fill=Status, x=Airline, y=No_Flights)) + geom_col() + ggtitle("Status by City") + facet_wrap(~City)
+
+```
+
+Some highlights:
+
+1: AM West flies more frequently to Phoenix than any other location
+2: Alaska flies more frequently to Seattle than any other location
+
+As before, we need to make each set of stacked bars the same height, for a proper comparison.
+
+```{r}
+ggplot(air2, aes(fill=Status, x=Airline, y=No_Flights)) + geom_col(position="fill") + ggtitle("Status by City") + facet_wrap(~City)
+
+```
+
+Some highlights:
+
+1: City with most delayed arrival is San Francisco, followed by Seattle, on both airlines as it seems visually.
+
+2: As seem above, AM West biggest destination is Phoenix but this fact doesn't translate into more delays. 
+
+3: On Alaska, biggest destination is Seattle and this seems to impact delayed frequency.
+
+Calculation showing the percentage of delayed flights will done in the next step. 
+
+
+# Summarizing data using piping
+
+In this step, I will aggregate data in order to perform a calculation that will show which airline is more punctual.
+
+```{r}
+# Total fligths by status
+summary_total <- air2 %>%
+  group_by(Airline, Status) %>%
+  summarize(Total_Flights=sum(No_Flights))%>%
+  spread(key="Status", value="Total_Flights") %>%
+  mutate(total=`on time`+delayed,`On_Time`=percent(round((`on time`/total),2)),`Delayed`=percent(round((delayed/total),2))) %>%
+  arrange(desc(`On_Time`))
+head(summary_total)
+```
+# Conclusion 1
+
+1: As confirmation to the visual inspection above, AM West is indeed more punctual than Alaska by 2 percentage points!
+
+Next analysis, will look into % Delayed by city by airline, in aggregate.
+```{r}
+# best by City
+# air2<-air2[,c(2,1,3,4)]
+summary_city <- air2 %>%
+  group_by(City,Airline,Status) %>%
+  summarize(Total_Flights=sum(No_Flights))%>%
+  spread(key="Status", value="Total_Flights") %>%
+  mutate(total=`on time`+delayed,`% On_Time`=percent(round((`on time`/total),2)),`% Delayed`=percent(round((delayed/total),2))) %>%
+  arrange(`% On_Time`, City)
+# Top 10 delayed cities
+head(summary_city, n=10)
+```
+# Conclusion 2
+
+2: Top 3 cities with more delayed flights are San Francisco and Seattle on both AM West and Alaska, as suspected from the charts above.
+
+On Alaska, second city with more delayed flights is also Seattle.
+
+
+Looking into a similar table but grouping by Airline
+
+```{r}
+summary_airline_1 <- air2 %>%
+  group_by(Airline,City, Status) %>%
+  summarize(Total_Flights=sum(No_Flights))%>%
+  spread(key="Status", value="Total_Flights") %>%
+  mutate(total=`on time`+delayed,`% On_Time`=percent(round((`on time`/total),2)),`% Delayed`=percent(round((delayed/total),2))) %>%
+  arrange(Airline,`% On_Time`, City)
+# Top 10 delayed cities
+head(summary_airline_1, n=10)
+```
+# Conclusion 3
+
+3: As seem before, Alaska flies more to Seattle than to any other location and has the second worst record in terms of delayed flights.
+On AM West, despite having more fligths to Phoenix than any other location, this is the most punctual destination.
+
+
