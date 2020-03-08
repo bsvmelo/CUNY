@@ -1,0 +1,198 @@
+---
+title: "Project 2 - Data Set 1"
+author: "Bruno de Melo"
+date: "3/6/2020"
+output: html_document
+---
+
+## Project 2 - Data Set 1
+
+Data Set suggestion came from Sung Lee. He suggested analysis is to compare the schools to see which one had the highest performing ratio of exams with a 3, 4, or 5 and cross-reference with the location of the school.
+
+Raw file is obtained from http://opendata.cityofnewyork.us/
+
+![alt text](https://data.cityofnewyork.us/api/assets/3FF54443-CD9C-4E56-8A20-8D2BD245BD1A?nyclogo300.png)
+
+```{r}
+
+
+if (!require('tidyverse')) install.packages('tidyverse')
+if (!require('scales')) install.packages('scales')
+
+#library(tidyverse)
+#library(scales)
+#install.packages("readxl")
+#library(readxl)
+
+# Reading csv file
+school <- read.csv(file='https://data.cityofnewyork.us/resource/itfs-ms3e.csv')
+
+# Table visualization
+head(school)
+
+```
+
+## Data Dictionary
+From the data dictionary, field definitions are:
+DBN:	District, Borough and school number		
+School Name:	Name of school		
+Num of AP Test Takers:	Number of students who took AP test		
+Num of AP Total Exams Taken:	Number of AP exams taken by students		
+Num of AP Exams Passed:	Number of AP exams passed by students
+
+
+Some data exploration and tidying
+
+Using summary() we get an idea of number of NAs, for example.
+
+```{r}
+
+# Data summary
+
+summary(school)
+
+```
+
+There are `r sum(is.na(school$ap_test_takers_))` NAs in third column, `r sum(is.na(school$total_exams_taken))` in the fourth column and `r sum(is.na(school$number_of_exams_with_scores_3_4_or_5))` in the last column.
+
+These need to be ignored, so a transformed data set is generated - school1.
+
+
+```{r}
+
+# Data summary
+school1<-na.omit(school)
+summary(school1)
+
+```
+
+I will also split column dbn into district, borough and school id, as line out in the data dictionary. I will also add a column containing the borough name.
+
+```{r}
+# District 
+school1$district<-str_extract(school1$dbn, "^.{2}")
+
+# borough code
+school1$borough<-substr(school1$dbn, 3, 3)
+school1$borough_desc<-ifelse(school1$borough=="M",'Manhattan',ifelse(school1$borough=="Q",'Queens',ifelse(school1$borough=="K",'Brooklyn',ifelse(school1$borough=="X",'Bronx',ifelse(school1$borough=="R",'Staten Island',NA))))) 
+
+# School id
+school1$id<-substr(school1$dbn, 4, 6)
+
+
+head(school1)
+```
+
+
+## Part 1 - Analysis of AP test data set
+As suggested by my colleague Sung Lee, I will compare schools to see which one had the highest performing ratio of exams with a 3, 4, or 5 and cross-reference with the location of the school.
+
+
+Performing ratio has to be normalized by the total of exams taken. A box plot is showed for comparison. 
+
+```{r}
+# Normalizing performance ratio by total exams taken
+#(school1<-mutate(school1, perf_ratio = paste(round(number_of_exams_with_scores_3_4_or_5 / total_exams_taken*100,1), "%", sep="") ) )
+
+school1<-mutate(school1, perf_ratio = number_of_exams_with_scores_3_4_or_5 / total_exams_taken )
+
+# Boxpplot
+ggplot(school1, mapping=aes(borough_desc,perf_ratio)) + geom_boxplot() + scale_x_discrete(name ="Borough") + scale_y_continuous(name = "Performance Ratio")
+
+```
+
+Some Highlights:
+Manhattan has the highest median while Bronx has the lowest.
+Highest individual performance found in Bronx.
+Highest dispersion of performance is found in Bronx.
+Lowest dispersion is in Staten Island.
+
+Summarizing by the mean and median of performance ratio and grouped by borough
+
+```{r}
+school2<-school1 %>%
+  group_by(borough_desc) %>%
+  summarize(Mean_Perf=mean(perf_ratio), Median_Perf=median(perf_ratio)) %>%
+  arrange(desc(Mean_Perf),Median_Perf)
+
+# ggplot(school2) + geom_col(mapping=aes(x=reorder(borough_desc,-Mean_Perf),Mean_Perf)) + scale_x_discrete(name ="Borough")+ scale_y_continuous(name ="Mean Performance")
+
+```
+
+Summarizing by the mean and median of performance ratio and grouped by district and borough
+
+```{r}
+# Summarizing by the mean of performance ratio and grouped by district
+(school3<-school1 %>%
+  group_by(district, borough_desc) %>%
+  summarize(Mean=percent(mean(perf_ratio)), Median=percent(median(perf_ratio))) %>%
+  arrange(desc(Mean), Median))
+```
+
+Top 3 districts with highest means are all in Manhattan.
+
+As suggested by my colleage, I'll display the top schools.
+
+
+```{r}
+school4<-school1 %>%
+  select(dbn,schoolname,borough_desc,perf_ratio) %>%
+  mutate(rank=min_rank(perf_ratio)) %>%
+  arrange(desc(rank))
+
+head(school4)
+
+```
+
+Top school is `r school4$schoolname[1]`, located in `r school4$borough_desc[1]`  with a performance ratio of `r percent(school4$perf_ratio[1])`.
+
+
+## Additional data set 
+I will also explore demography data related to each school using another dataset provide by NYC Open Data.
+
+```{r setup, include=TRUE}
+demog<-read.csv(file='https://data.cityofnewyork.us/resource/ihfw-zy9j.csv')
+head(demog)
+```
+
+Both data sets are linked by the DBN field, which will be a way to join them.
+
+## Data Dictionary
+There are just too many columns to display, exactly `r ncol(demog)` columns. Data dictionary location is here 
+
+https://data.cityofnewyork.us/api/views/ihfw-zy9j/files/9e1aa617-1249-43ea-b7eb-2240bbed5b41?download=true&filename=Demographic%20Data%20DD.xlsx
+
+Main columns I will be using are:
+DBN	
+Year	The school year
+'#Female	The number of females
+%Female	The percentage of females
+'#Male	The number of males
+%Male	The percentage of males
+'#Asian	The number of asians
+%Asian	The percentage of asians
+'#Black	The number of blacks
+%Black	The percentage of blacks
+'#Hispanic	The number of hispanics
+%Hispanic	The percentage of hispanics
+'#Other	The number of others
+%Other	The percentage of others
+'#White	The number of whites
+%White	The percentage of whites
+
+
+
+```{r}
+#Filtering by year of first data set
+
+demog1<-demog %>%
+  filter(schoolyear=="20102011")
+
+#left join by unique key 
+school5<-school4 %>%  
+  left_join(demog1, by="dbn")
+
+head(school5)
+```
+
+Top School does not have any demography data, but second best ranked has  `r school5$male_per[2]`% males, and located in `r school5$asian_per[2]`% Asians, for example.
