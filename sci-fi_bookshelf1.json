@@ -1,0 +1,32 @@
+{
+    "Sci-Fi_bookshelf":
+        [
+            {
+                "Title": "Aurora",
+                "Author": "Kim Stanley Robinson",
+                "Publisher": "Orbit",
+                "Publication-Date": "July 2015",
+                "Pages": "512",
+                "ISBN": "0316526991",
+
+            },
+            {
+                "Title": "Use of Weapons",
+                "Author": "Iain M. Banks",
+                "Publisher": "MacDonald & Co",
+                "Publication-Date": "1990",
+                "Pages": "510",
+                "ISBN": "0316030570",
+
+            },
+            {
+                "Title": "Good Omens",
+                "Author": "Terry Pratchett & Neil Gaiman",
+                "Publisher": "William Morrow Paperbacks",
+                "Publication-Date": "March 2019",
+                "Pages": "400",
+                "ISBN": "0062697250",
+                
+            }
+        ]
+}
