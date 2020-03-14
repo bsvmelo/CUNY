@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Sci-Fi_bookshelf>
+        <book id="0">
+            <Title>Aurora</Title>
+            <Author>Kim Stanley Robinson</Author>
+            <Publisher>Orbit</Publisher>
+            <Publication-Date>July 2015</Publication-Date>
+            <Pages>512</Pages>
+            <ISBN>0316526991</ISBN>
+        </book>
+        <book id="1">
+            <Title>Use of Weapons</Title>
+            <Author>Iain M. Banks</Author>
+            <Publisher>MacDonald &amp; Co</Publisher>
+            <Publication-Date>1990</Publication-Date>
+            <Pages>510</Pages>
+            <ISBN>0316030570</ISBN>
+        </book>
+        <book id="2">
+            <Title>Good Omens</Title>
+            <Author>Terry Pratchett &amp; Neil Gaiman</Author>
+            <Publisher>William Morrow Paperbacks</Publisher>
+            <Publication-Date>March 2019</Publication-Date>
+            <Pages>400</Pages>
+            <ISBN>0062697250</ISBN>
+        </book>
+</Sci-Fi_bookshelf>
