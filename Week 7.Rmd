@@ -1,0 +1,138 @@
+---
+title: "Week 7"
+author: "Bruno de Melo"
+date: "3/14/2020"
+output: html_document
+---
+
+## Working with HTML, XML and JSON in R
+
+#Location
+
+These are the files used in this assignment.
+
+<a href="https://raw.githubusercontent.com/bsvmelo/CUNY/master/Sci-Fi_bookshelf1.html">Link to HTML file</a>
+
+<a href="https://raw.githubusercontent.com/bsvmelo/CUNY/master/Sci-Fi_bookshelf1.xml">Link to XML file</a>
+
+<a href="https://raw.githubusercontent.com/bsvmelo/CUNY/master/sci-fi_bookshelf2.json">Link to JSON file</a>
+
+
+
+#Loading libraries
+
+```{r}
+if (!require('XML')) install.packages('XML')
+if (!require('jsonlite')) install.packages('jsonlite')
+library(XML)
+library(jsonlite)
+```
+
+#1:HTML
+
+#Reading HTML file
+
+```{r}
+# Reading HTML file from github
+con <-'https://raw.githubusercontent.com/bsvmelo/CUNY/master/Sci-Fi_bookshelf1.html'
+bookshelf_raw<-readLines(con, warn = FALSE)
+# Printing
+head(bookshelf_raw)
+```
+
+#Parsing HTML
+
+```{r}
+parsed_bookshelf<-htmlParse(bookshelf_raw)
+print(parsed_bookshelf)
+```
+
+#Converting to R data.frame
+
+```{r}
+
+df_bookshelf <- readHTMLTable(parsed_bookshelf, stringsAsFactors=FALSE)
+
+df_bookshelf[[1]]
+```
+
+
+#Displaying
+
+```{r}
+names(df_bookshelf[[1]])
+
+df_bookshelf[[1]]$Title
+```
+
+
+#2:XML
+
+#Reading XML file
+
+```{r}
+# Reading XML file from github
+con <-'https://raw.githubusercontent.com/bsvmelo/CUNY/master/Sci-Fi_bookshelf1.xml'
+bookshelf_raw_xml<-readLines(con, warn = FALSE)
+# Printing
+head(bookshelf_raw_xml)
+```
+
+#Parsing XML
+
+```{r}
+parsed_bookshelf_xml<-xmlParse(bookshelf_raw_xml)
+print(parsed_bookshelf_xml)
+```
+
+#Converting to R data.frame
+
+```{r}
+
+(df_bookshelf_xml <- xmlToDataFrame(parsed_bookshelf_xml))
+
+```
+
+#Displaying
+
+```{r}
+df_bookshelf_xml$Title
+
+df_bookshelf_xml$`Publication-Date`
+
+df_bookshelf_xml$Author
+
+```
+
+
+#3:JSON
+
+#Reading JSON
+
+```{r}
+# Reading JSON file from github
+con <-'https://raw.githubusercontent.com/bsvmelo/CUNY/master/sci-fi_bookshelf2.json'
+bookshelf_raw_js<-readLines(con, warn = FALSE)
+# Printing
+head(bookshelf_raw_js)
+```
+
+#Converting to R data.frame
+
+```{r}
+bookshelf_js<-fromJSON(bookshelf_raw_js)
+bookshelf_js
+```
+
+#Displaying
+
+```{r}
+bookshelf_js$`Sci-Fi_bookshelf`$Title
+
+bookshelf_js$`Sci-Fi_bookshelf`$Publisher
+```
+
+
+## Conclusion
+
+All data frames are identical.
