@@ -1,0 +1,58 @@
+---
+title: "HW 9"
+author: "Bruno de Melo"
+date: "3/29/2020"
+output: html_document
+---
+
+## New York Times API
+
+I'm using jsonlite package to convert results in a flat list and then convert to a data frame.
+
+Two APIs have been queries:
+Book review
+Article search
+
+But first things first, installed/calling relevant libraries.
+
+```{r}
+
+library(jsonlite)
+library(tidyverse)
+
+nyt_key_book_review<-"6SzKSy3JLBQhJRA2sie1z0fZSiO9kYGJ"
+nyt_key_article_search<-"oREdUFLfvSwvdkb5iQj4GqvJ6aiqpa5"
+
+
+```
+
+## Book review
+
+The Books API provides information about book reviews and The New York Times Best Sellers lists.
+
+I'm getting book reviews on one of my favorite authors: Iain Banks.
+
+```{r}
+# Reading JSON files from NYT API and converting to a data.frame
+
+# Book review
+reviews_df <- fromJSON("https://api.nytimes.com/svc/books/v3/reviews.json?author=Iain+Banks&api-key=6SzKSy3JLBQhJRA2sie1z0fZSiO9kYGJ",flatten = TRUE) %>% data.frame()
+
+# Printing
+head(reviews_df)
+
+```
+
+## Article searching
+
+As another example, I'm also getting articles mentioning Mr Banks. This data frame would require more work, giving that it searches for all string.
+
+```{r}
+
+# Article search
+article_df <- fromJSON("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=iain+m.+banks&api-key=joREdUFLfvSwvdkb5iQj4GqvJ6aiqpa5", flatten = TRUE) %>% data.frame()
+
+# Printing
+head(article_df,10)
+
+```
