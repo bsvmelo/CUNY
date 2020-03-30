@@ -16,7 +16,7 @@ Article search
 But first things first, installed/calling relevant libraries.
 
 ```{r}
-
+library(XML)
 library(jsonlite)
 library(tidyverse)
 
@@ -41,7 +41,67 @@ reviews_df <- fromJSON("https://api.nytimes.com/svc/books/v3/reviews.json?author
 # Printing
 head(reviews_df)
 
+
+
 ```
+
+# Goodreads API
+
+I would like to check whether any of these books reviewed by the Times are part of the famous Culture series.
+
+To do so, I will call an API from Goodreads.com: https://www.goodreads.com/api.
+
+There are two API calls:
+First: Author name to grab author id
+Second: Series list, that uses author id
+
+Steps:
+1: Finding author id
+
+```{r}
+# connection
+# author name to be parsed in the URL
+con <-'https://www.goodreads.com/api/author_url/Iain%20M%20Banks?key=UZDsXRdqqW0GHin6a2Iw'
+author_xml<-readLines(con, warn = FALSE)
+# XML parsing
+author_xml<-xmlParse(author_xml)
+# grabbing author id
+author_id <- xpathSApply(author_xml, "//*/author/@id")
+y<-str_trim(author_id, side = c("both"))
+```
+
+This is Mr Banks' id: `r y`.
+
+2: Extract author's series
+```{r}
+# connection
+# author id to be parsed in the URL
+url_gr<-paste("https://www.goodreads.com/series/list/",y,".xml?key=UZDsXRdqqW0GHin6a2Iw",sep="")
+
+con1<-url_gr
+# XML parsing
+series_xml<-readLines(con1, warn = FALSE)
+head(series_xml,10)
+series_xml<-xmlParse(series_xml)
+
+# extracting Book titles into a data frame
+title_df <- xmlToDataFrame(nodes = getNodeSet(series_xml, "//*/best_book"), stringsAsFactors = FALSE)
+
+# Displaying Book titles
+head(title_df$title,20)
+```
+
+3: Comparing NYT book list to Goodreads list.
+
+```{r}
+
+result<-str_detect(title_df$title,reviews_df$results.book_title)
+
+```
+
+Unfortunately, none of the books reviewed by NYT belong to the Culture series.
+
+`r result`
 
 ## Article searching
 
