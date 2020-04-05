@@ -1,0 +1,180 @@
+---
+title: "Week 10"
+author: "Bruno de Melo"
+date: "4/4/2020"
+output: html_document
+---
+
+## Sentiment Analysis
+
+This assignment will look at sentiment analysis using examples given by Julia Silge and David Robinson on Chapter 2 of their book Text Mining with R. Main examples center around Jane Austen's book.
+
+I will also complement this assignment using a book downloaded from the <a rel="nofollow" class="external text" href="https://dev.gutenberg.org/help/new_website">Gutenberg Project</a>, which is a library of over 60,000 free eBooks. Choose among free epub and Kindle eBooks, download them or read them online. You will find the world's great literature here, with focus on older works for which U.S. copyright has expired. Thousands of volunteers digitized and diligently proofread the eBooks, for enjoyment and education. 
+
+
+To start with, the usual installation and library loading.
+
+```{r}
+options(repos=structure(c(CRAN="http://cloud.r-project.org/")))
+install.packages("textdata")
+install.packages("gutenbergr")
+
+library("gutenbergr")
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(textdata)
+library(janeaustenr)
+```
+
+
+## Jane Austen sentiment analysis
+
+Here I reproduce the examples given in the book.
+
+First, authors take the text of all Jane Austen's novels and convert the text to the tidy format using unnest_tokens().
+
+```{r}
+# conversion using tidy function unnest_tokens
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+```
+
+Authors now join use the NRC lexicon. Examining this lexicon, there are ten distinct sentiment groups: 
+
+```{r}
+# sentiment groups
+(nrc_joy <- get_sentiments("nrc") %>%
+  group_by(sentiment) %>%
+  summarize(no_words=n())  %>%
+  arrange(desc(no_words)))
+```
+
+Analysis will be done filtering for joy words. Next, let’s they use filter() again in the data frame with the text from the books for the words from Emma and then use inner_join() to perform the sentiment analysis. 
+
+
+```{r}
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+(emma_tidy<- tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE))
+```
+
+Next, they count up how many positive and negative words there are in defined sections of each book. They define an index to keep track of where they are in the narrative; this index (using integer division) counts up sections of 80 lines of text.
+
+```{r}
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+Now they plot these sentiment scores across the plot trajectory of each novel. 
+
+```{r}
+(ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x"))
+```
+
+## Analysis of Dracula
+
+
+I'll perform a similar analysis on Dracula by Bram Stoker, downloaded from the Gutenberg Project R package.
+
+The dataset gutenberg_metadata contains information about each work, pairing Gutenberg ID with title, author, language, etc:
+
+```{r}
+
+install.packages("gutenbergr")
+library("gutenbergr")
+
+y<-gutenberg_metadata
+head(y)
+
+```
+
+This grouping shows all authors who have a book written in English (language=="en"), which contains text (has_text == TRUE). Summary shows number of books available:
+
+```{r}
+# group by authors
+
+(tidy_books_authors <- y %>%
+  filter(language=="en", has_text == TRUE) %>%
+  group_by(author) %>%
+  summarize(n=n()) %>%
+  arrange(desc(n)))
+```
+
+Here we filter by title and get all Dracula books available and ultimately choose one of the them to download and analyse.
+
+```{r}
+# Dracula books
+(books_dracula <- y %>%
+  filter(language =="en", has_text == TRUE, title == "Dracula"))
+
+# download dracula book
+dracula_book<-gutenberg_download(345)
+
+```
+
+From here on, I replicate the analysis performed above and later compare Dracula with Jane Austen's sentiments:
+
+```{r}
+# create additional column named book and deleting id column to make dataframes similar
+
+drac_book <- dracula_book %>%
+  mutate(book = "Dracula", linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  filter(linenumber>161) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+drac_book$gutenberg_id<-NULL
+
+# bing sentiments
+dracula_sentiment <- drac_book %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+In the plot below, it seems negative sentiments are more prominent than positive ones.
+
+```{r}
+(ggplot(dracula_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) )
+```
+
+# Merging data frames 
+Tables are merged and Dracula sentiment is compared to JA's books. Not unexpectedly, Dracula has many more negative sentiments than JA's books.
+
+```{r}
+sent<- full_join(jane_austen_sentiment, dracula_sentiment)  
+
+
+(ggplot(sent, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x"))
+
+```
+
+## Conclusion
+
+I was able to replicate the primary code provided in chapter 2 of Text Mining with R and I also compared sentiments found in Dracula's with those of Jane Austen's books.
+
+As expected, Dracula contains way more negative sentiments than Austen's books.
+
+
+
