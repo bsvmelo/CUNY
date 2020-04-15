@@ -1,0 +1,67 @@
+---
+title: "Discussion 12: Wayfair - Recommendation Systems"
+author: "Bruno de Melo"
+date: "4/15/2020"
+output: html_document
+---
+
+
+# Overview
+
+Wayfair - http://www.wayfair.com - is one of the world's largest online destinations for the home, including furniture, rugs, appliances, storage solution. Through technology and innovation, Wayfair makes it possible for shoppers to quickly and easily find exactly what they want from a selection of more than 14 million items across home furnishings, décor, home improvement, housewares and more.
+
+
+# Scenario Design
+
+A Scenario Design analysis is performed on the Wayfair's recommendation system.
+
+1: Who are the target users?   
+Wayfair's target users are online shoppers looking for furniture, rugs, appliances, storage solution. Site also offers "room ideas" which show customers with various furniture styles and decoration ideas.
+
+2: What are their key goals?   
+Their key goal is to help customers find any piece of home furnishing in need. User interface is quite intuitive with a clear and neat design. Main departments are sub-divided in components, like Furniture is divided by rooms: living room, dining room, bedroom, etc.
+
+3: How can they accomplish their goals?   
+Wayfair displays their selection through various themes like Furniture, Outdoor, Rugs, Remodeling, etc. There are also sections covering current sales, and also a closeouts. There's a "trending now" section which shows popular and favorites furnitures. Site is very visual as expected from an online furniture shop.
+
+Wayfair also employs different recommendation systems, from the traditional collaborative and content-based to a more sophisticated system based on images trained on a deep learning algorithm, which is detailed below.
+
+
+# Reverse Engineering
+Multiple recommendation systems at Wayfair use collaborative filtering based models to understand user behavior and identify like-minded customers. Despite its success, collaborative filtering has a few significant drawbacks, such as the cold start problem and a limited scope of recommendable products.
+
+## Collaborative Filtering vs. Content Based Recommender Systems
+Collaborative filtering is an extremely popular technique for recommender systems today. It has seen tremendous success from the Netflix Prize competition, to music recommendations on Spotify. In the context of Wayfair, collaborative filtering aims to make predictions about what a particular shopper will like based on how similar customers have behaved on site. Typically, this process is done using a matrix factorization approach, where the matrix factors represent latent representations of customers and their affinity to particular products 
+
+Collaborative filtering suffers from a few drawbacks. First, collaborative filtering is unable to recommend products that have had no customer interaction. This poses a problem for products that have been recently added to the catalogue. This is known as the cold start problem.
+
+Another drawback of the collaborative filtering approach is the difficulty to recommend less popular products from the Wayfair catalogue. In the Wayfair catalogue, products are broken up into different classes (i.e. sofas, wall art, beds, dressers, etc.). Wayfair’s product catalogue contains millions of products across thousands of classes, but the most popular products only account for a very small percentage of it. As a result, collaborative filtering approaches tend to recommend popular products, at the expense of potentially showing a more relevant product.
+
+## New model: Visual Complements model (ViCs)
+Wayfair developed a method for aiding customers in their search for complementary items: the Visual Complements model (ViCs). Rather than depending on customer input, this model leverages an image-based model (CNN) to understand compatibility from product imagery, thereby mimicking the way customers find the pieces they want and eliminating the cold start problem in the process. ViCs aims to provide an understanding of compatibility for all Wayfair product imagery, and to deliver customer recommendations for complementary, stylistic similar items across product classes.
+
+In order to provide complementary product recommendations, the outputs of the model needed to serve as a representation of relative compatibility between products. To accomplish this, goal was to create an embedding space that keeps compatible data points of products close, while pushing non-compatible data points apart. Triplet loss [1], first introduced in facial recognition tasks, can be used in this case as a way to learn representative embeddings for each piece. The triplet loss minimizes the distance between an anchor and a positive which stylistically matches the anchor, and maximizes the distance between the anchor and a negative which are stylistically incompatible.
+
+In contrast to facial recognition tasks, which typically work with imagery that all belong to the same domain (faces), in Wayfair’s use case they are presented with a variety of features to examine for different pairs of product classes. For example, compatible sofas and accent chairs might be made of the same material, whereas compatible coffee tables and sofas most likely are not. Taking this assumption into account, they added a cross-entropy loss for class prediction, so that the model could learn to pay attention to different criteria when looking at different matches of product classes.
+
+## Data
+The performance of a deep learning model often relies on the quality of its training data. So for their ViCs model, they incorporated training data from multiple sources to avoid bias. First of all, they performed importance sampling on the recommendations from their context-based style model. They also mined triplets from 3D scene graphs, which 3D artists at Wayfair use as a way to render realistic images for products with 3D models. They did this in order to approximate an expert’s stylistic perspective, assumption being that  products included within a given scene curated by a 3D artist are stylistically compatible. Last but not least, they wanted to include the demonstrated bias of customers’ towards purchasing popular products (as successfully captured in other recommendation algorithms which leverage customer data, e.g. Wayfair’s RecNet). As such, they took customer browsing history into consideration, including products added to lists by customers and co-ordered products. 
+
+In the training data, labeled triplets are composed of an Anchor item from class A, a Positive item from class B that stylistically matches the Anchor, and a Negative item from class B that is not compatible with the Anchor. For example an Anchor sofa image would be more compatible with a Positive coffee table than a Negative coffee table. Human labelers trained in recognizing stylistic attributes confirmed the quality of the unsupervised triplets that they mined from various sources mentioned above—considering color, shape, material and other factors that contribute to compatibility—so that they could serve as training data for the ViCs model. 
+
+## Results
+Model performance was evaluated in an actual use case at Wayfair: product recommendations. To do so, they used a single branch of the trained ViCs model to embed all of the product images in Wayfair’s catalog. The embeddings thus would represent a set of visual features of the products that contribute to complementary compatibility. As a result, by doing a nearest neighbor search in the embedding space, they were able to offer compatible product recommendations, as showed in the picture below.
+
+![](https://storage.googleapis.com/wf-blogs-engineering-media/2020/03/3c3cbcdc-figure5.png)
+*For an anchor product that a customer has bought or is browsing (the white sofa on the left), ViCs recommends the ranked list of products (from left—most compatible, to right—least compatible) that are compatible with the anchor in each specified complementary class, in this case accent chairs (upper row) and accent tables (lower row).*
+
+ViCs model is able to leverage compatibility in various attributes. It can capture consistent features across product classes, and carry the features from piece to piece. The recommended accent chairs have features such as sharp-lined legs with metal accents, various colors and fabrics that do not overpower the leather sofa, and/or tufted cushions that match the sofa handle detailing. For accent tables, there is again no clashing of colors, and a generalized square/rectangular shape to mirror the shapes and lines of the back of the sofa sofa.
+
+Rather than solely providing recommendations for products which are so similar as to be nearly identical, ViCs is able to provide a diverse range of recommendations. These recommendations, for example, vary in both color and shape, while still adhering to general stylistic similarity. One way ViCs achieves this is through recognizing stylistic similarity based on product materials. Across our three target classes here (sofas, accent chairs, and accent tables), ViCs was able to do this particularly well for accent tables. For example the recommendations center on tables made of mixed metals and acrylic (as such are a common combination in minimalist modern style) as opposed to leather and marble (which are common in Victorian styling). 
+
+
+References
+*[1] Schroff, F., Kalenichenko, D., & Philbin, J. (2015). FaceNet: A unified embedding for face recognition and clustering. 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR). doi: 10.1109/cvpr.2015.7298682. P. 5 *
+
+## Recommendation
+Wayfair's visual recommendation system is quite impressive and seems to work well. My recommendation to Wayfair would be to extent the use of this visual recommendation to be used on the user's own furniture or room design. Imagine the user wants to buy a rug for her living room. User could upload an image of a sofa for example that he/she possesses, and Wayfair could recommend a rug that matches that sofa's style/color. Another more expansive use would be to upload a room set-up with or without furniture, and based on the user's desired style selection, system recommends furnitures, rugs or decoration that fits that room.
