@@ -1,0 +1,131 @@
+---
+title: "Project 4"
+author: "Bruno de Melo"
+date: "4/25/2020"
+output: html_document
+---
+
+# Spam classification  
+
+# Data manipulation
+
+```{r}
+# loading libraries
+library(tidyverse)
+library(tidytext)
+library(tm)
+library(RTextTools)
+```
+
+
+# Loading files from
+
+```{r}
+# I was unable to copy the folders to github! Shame on me!
+
+setwd("/Users/blam/Downloads/Project4/")
+spam <- Corpus(DirSource("/Users/blam/Downloads/Project4/spam",  encoding = "UTF-8"))
+easy_ham <- Corpus(DirSource("/Users/blam/Downloads/Project4/easy_ham",  encoding = "UTF-8"))
+
+#hard_ham <- Corpus(DirSource(""), readerControl = list(language="lat"))
+
+# adding email type
+meta(spam, tag="class_type") <- "2"
+meta(easy_ham, tag="class_type") <- "1"
+
+#creating labels to be used in the training algorithm
+labels<-unlist(c(meta(spam[]),meta(easy_ham[]))) # works
+
+#labels_m<-as.data.frame(labels)
+#labels_df<-data.frame(matrix(NA, nrow = 3051, ncol = 2),stringsAsFactors = FALSE)
+#labels_df$X1<-labels_m[,1]
+#labels_df$X2<-1:3051
+#colnames(labels_df)<-c("type","index")
+
+#labels<-as.numeric(factor(factor(labels))) # works
+
+```
+
+# Combine corpus
+
+```{r}
+
+#Combine corpus
+corps <- c(spam,easy_ham,recursive=T)
+corps <- iconv(corps, "ASCII", "UTF-8", sub="byte")
+
+comb<- VCorpus(VectorSource(corps))
+
+#Inspection
+inspect(comb[3053])
+meta(comb[[1000]])
+
+```
+# Applying transformations available
+
+```{r}
+e_corpus <- tm_map(comb, removePunctuation)
+e_corpus <- tm_map(comb, removeNumbers)
+e_corpus <- tm_map(comb, removeWords, stopwords("english"))
+e_corpus <- tm_map(comb, stripWhitespace)
+# Also applying Porter's word stemmer - http://www.cs.odu.edu/~jbollen/IR04/readings/readings5.pdf
+e_corpus <- tm_map(comb, stemDocument)
+
+#Inspection
+inspect(e_corpus[1000])
+meta(e_corpus[[1000]])
+
+# resampling - was not able to resample due to issues with labeling
+#corps_samp <- sample(e_corpus, 550)
+
+#inspect(corps_samp[550])
+#meta(corps_samp[[550]])
+```
+
+#Build document-term matrix
+
+```{r}
+e_dtm <- DocumentTermMatrix(e_corpus)
+e_dtm
+
+#suggestions to reduce dimension is to remove less frequent terms such that the sparsity is less than 95%
+
+e_dtm <- removeSparseTerms(e_dtm, 0.99)
+e_dtm
+
+```
+# Using RTextTools for Classification - WRAP THE DATA IN A CONTAINER
+Reference: https://journal.r-project.org/archive/2013-1/collingwood-jurka-boydstun-etal.pdf
+```{r}
+set.seed(95616)
+train_size<-round(0.9*length(labels))
+sample_size<-length(labels)
+
+emails_cont<-create_container(e_dtm, labels=labels,trainSize = 1:train_size, testSize = (train_size+1):sample_size, virgin = FALSE)
+
+# TRAIN THE ALGORITHMS USING THE CONTAINER
+SVM <- train_model(emails_cont,"SVM")
+GLMNET <- train_model(emails_cont,"GLMNET")
+SLDA <- train_model(emails_cont,"SLDA")
+BOOSTING <- train_model(emails_cont,"BOOSTING")
+BAGGING <- train_model(emails_cont,"BAGGING")
+RF <- train_model(emails_cont,"RF")
+#NNET <- train_model(emails_cont,"NNET")
+TREE <- train_model(emails_cont,"TREE")
+
+# CLASSIFY THE TESTING DATA USING THE TRAINED MODELS.
+SVM_CLASSIFY <- classify_model(emails_cont, SVM)
+GLMNET_CLASSIFY <- classify_model(emails_cont, GLMNET)
+SLDA_CLASSIFY <- classify_model(emails_cont, SLDA)
+BOOSTING_CLASSIFY <- classify_model(emails_cont, BOOSTING)
+BAGGING_CLASSIFY <- classify_model(emails_cont, BAGGING)
+RF_CLASSIFY <- classify_model(emails_cont, RF)
+#NNET_CLASSIFY <- classify_model(emails_cont, NNET)
+TREE_CLASSIFY <- classify_model(emails_cont, TREE)
+
+analytics <- create_analytics(emails_cont,cbind(SVM_CLASSIFY, SLDA_CLASSIFY,BOOSTING_CLASSIFY, BAGGING_CLASSIFY,RF_CLASSIFY, GLMNET_CLASSIFY, TREE_CLASSIFY))
+
+summary(analytics)
+```
+# Conclusion
+Results look to good to be true, and this is because I was not able to resample. I struggled with the meta data manipulation in the corpus and was unable to retrieve labels.
