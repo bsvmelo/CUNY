@@ -7,16 +7,53 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+
 install.packages("readxl")
 library(readxl)
 
-link_1<-"https://www.un.org/en/development/desa/population/migration/data/estimates2/data/UN_MigrantStockTotal_2019.xlsx"
-link_2<-"https://www.un.org/en/development/desa/population/migration/data/estimates2/data/UN_MigrantStockByOriginAndDestination_2019.xlsx"
-
-dt_total<-readxl(link_1)
-dt_origdest<-readxl(link_2)
 
 
+# Data loading and data frame wrangling
 
+# Files location
+link_1<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/Table%201.csv"
+
+link_2<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/ANNEX.csv"
+
+#loading data frames
+
+#Contains Destination and Origin information per year
+dt_start<-read.csv(link_1,header=FALSE, sep=",") %>% data.frame(stringsAsFactors = FALSE)
+
+#Contains World Bank's Income group classification of each country 
+dt_annex<-read.csv(link_2,header=FALSE, sep=",") %>% data.frame(stringsAsFactors = FALSE)
+
+
+# dt_start
+
+# inspecting data frame
+head(dt_start,20)
+
+# It can be seen that relevant data starts from rows 15 onwards, so let's remove first 14 rows
+dt_main<-dt_start[-c(1:14),]
+head(dt_main,10)
+# rows 15 and 16 are the headers, so let's manipulate these rows and transform them into headers
+# Let's retain columns 1 to 6 from row 15 and columns 7 to 241 from row 16
+dt_main[1,c(7:241)]<-dt_main[2,c(7:241)]
+dt_main<-dt_main[-c(2),] 
+# Renaming headers with row 1 values and removing first row
+names(dt_main) <- unname(unlist(dt_main[1,]))
+dt_main <- dt_main[-1,]
+# Renaming column 3 and column 6
+dt_main<-rename(dt_main,Destination=names(dt_main)[3])
+dt_main<-rename(dt_main,TypeData=names(dt_main)[6])
+head(dt_main,10)
+
+```
+
+# Total migration per country of destination are located on the "Destination" horizontal column and contribution for that country of origin
+
+```{r}
+dt_main_19 <- filter( dt_main, Year == 2019 )
 ```
 
