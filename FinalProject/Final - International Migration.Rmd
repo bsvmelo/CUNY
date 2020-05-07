@@ -16,6 +16,9 @@ output: html_document
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(leaflet)
+
+install.packages("leaflet")
 
 
 
@@ -30,6 +33,8 @@ link_2<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/ANNE
 
 link_3<- xxxxx
 
+link_4<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/locationdata.csv"
+
 #loading data frames
 
 #Contains Destination and Origin information per year
@@ -40,7 +45,12 @@ dt_migr1<-dt_migr
 #Contains UN Development groups and World Bank's Income group classifications of each country 
 dt_annex<-read.csv(link_2,header=FALSE, sep=",", stringsAsFactors = FALSE, skip = 15) %>% data.frame()
 dt_group1<-dt_annex
+
 #Contains World Bank's indices dataset
+
+
+#Contains latitute and longitude data for each country
+dt_loc<-read_csv(link_4, col_names = TRUE, guess_max = 100, locale = locale(decimal_mark = ".")) %>% data.frame()
 
 ```
 
@@ -190,6 +200,23 @@ head(df_comb,20)
 Dendogram
 
 ```{r}
+df_loc1<-dt_loc
+df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
+y<-names(df_comb)[4]
+df_loc1<-left_join( df_loc1, df_comb, by='Destination' )
+
+df_loc1_2019<- df_loc1
+
+df_loc = dt_loc[,c(3,4)]
+leaflet(df_loc) %>% 
+  addTiles() %>% 
+  addCircles()
+
+leaflet() <- df_loc %>% 
+    addTiles() %>% 
+    addMarkers()
+    addCircles(df_loc)
+
 
 df_den <- df_
 hcd <- as.dendrogram(hc)
