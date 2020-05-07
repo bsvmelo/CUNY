@@ -6,19 +6,25 @@ output: html_document
 ---
 
 # International Migration
+Project goal is to analyse international migration based on data obtained on the UN and World Bank data sites.
+
+Data set contains historical data on migration for the years 1990, 1995, 2005, 2015 and 2019. There are many ways these dataset can be slided and diced. We will focus on the top countries of destination and origin.
 # Visualization of migration flows over time
 # What makes the top 20 destination countries attractive
 # Can we predict next country in the club, based on indicators?
 # Cluster analysis on World Bank Income group
 
+# Data set-up
 
 ```{r}
 library(tidyverse)
 library(readxl)
 library(lubridate)
 library(leaflet)
+library(plotly)
 
 install.packages("leaflet")
+install.packages("plotly")
 
 
 
@@ -33,7 +39,7 @@ link_2<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/ANNE
 
 link_3<- xxxxx
 
-link_4<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/locationdata.csv"
+link_4<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/location1.csv"
 
 #loading data frames
 
@@ -180,7 +186,8 @@ dt_group1<-type_convert(dt_group1)
 
 ```
 
-#Re-arranging classification data and joining datasets
+# Re-arranging classification data and joining datasets
+
 On both datasets, first lines will be deleted given that classification info was retrieved in separate data frames
 ```{r}
 dt_group2<-dt_group1[,-c(1,3,5:15),]
@@ -192,31 +199,132 @@ df_comb <-left_join( dt_migr1, dt_group2[,-c(2)], by='Code' )
 df_comb <- df_comb[,c(5,1:4,6,242:246,7:241)]
 df_comb <- df_comb[,-c(5,6)]
 head(df_comb,20)
+
 ```
 
 ```
-# Exploratory Data Analysis
+# Exploratory Data Analysis on countries of destination and origin
+
+Data set contains historical data on migration for the years 1990, 1995, 2005, 2015 and 2019. There are many ways these dataset can be slided and diced. We will focus on the top countries of destination and origin.
+
+```{r}
+df_top<- df_comb %>%
+  group_by(Year) %>%
+  filter(!is.na(CountryCode), Total>1000000) %>%
+  summarize(count=n(), sum=sum(Total))
+```
+
+
+
+Goal is to create a visualization output that displays migration flow
+
+```{r}
+# location data
+df_loc1<-dt_loc
+df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
+df_loc1<-rename(df_loc1,DestLat=names(df_loc1)[3])
+df_loc1<-rename(df_loc1,DestLon=names(df_loc1)[4])
+# joining migration dataset with location dataset
+df_all<-left_join( df_comb, df_loc1, by='Destination' )
+df_all<-select(df_all, Code:WBCode, country:DestLon, everything())
+
+# Gathering dataset
+df_all2<-gather(df_all, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
+
+# joining migration dataset with country of origin latitude and longitude data
+df_loc3<-dt_loc[,-c(1)]
+df_loc3<-rename(df_loc3,Origin=names(df_loc3)[1])
+df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[2])
+df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[3])
+df_loc4<-left_join(df_all2, df_loc3, by='Origin' )
+```
+
+
+# visualization test
+
+leaflet(df_loc1_2019) %>% 
+  addTiles() %>% 
+  addCircles(~DestLon , ~DestLat, weight = 1, radius =  ~sqrt(Total)*300)
+
+
+df_loc1_2019<- df_all %>% 
+filter(Year == 1990 & WBCode == 1502)
+
+df_loc2_2019<- df_all2 %>% 
+filter(Destination == 'Mauritius' & WBCode == 1502)
+
+
+leaflet(df_loc1_2019) %>% 
+  addTiles() %>% 
+  addCircles(weight = 1,
+    radius =  ~sqrt(Total)*300)
+```
+
+
 
 Dendogram
 
 ```{r}
+
+
+# location data
 df_loc1<-dt_loc
 df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
-y<-names(df_comb)[4]
+# joining migration dataset with location dataset
 df_loc1<-left_join( df_loc1, df_comb, by='Destination' )
+# Gathering dataset
+df_loc2<-gather(df_loc1, (Afghanistan:Zimbabwe), key="Origin", value="TotalOrigin")
+# joining 
+df_loc3<-dt_loc
+df_loc3<-rename(df_loc3,Origin=names(df_loc3)[2])
+df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[3])
+df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[4])
+df_loc4<-left_join( df_loc2, df_loc3[,-c(1)], by='Origin' )
 
-df_loc1_2019<- df_loc1
+df_loc1_2019<- df_loc1 %>% 
+filter(Year == 2019 & WBCode == 1500)
 
-df_loc = dt_loc[,c(3,4)]
-leaflet(df_loc) %>% 
+leaflet(df_loc1_2019) %>% 
   addTiles() %>% 
-  addCircles()
+  addCircles(weight = 1,
+    radius =  ~sqrt(Total)*300)
 
-leaflet() <- df_loc %>% 
-    addTiles() %>% 
-    addMarkers()
-    addCircles(df_loc)
+# airport locations
+air <- read.csv(
+  'https://plotly-r.com/data-raw/airport_locations.csv'
+)
+# flights between airports
+flights <- read.csv(
+  'https://plotly-r.com/data-raw/flight_paths.csv'
+)
+flights$id <- seq_len(nrow(flights))
 
+# map projection
+geo <- list(
+  projection = list(
+    type = 'orthographic',
+    rotation = list(lon = -100, lat = 40, roll = 0)
+  ),
+  showland = TRUE,
+  landcolor = toRGB("gray95"),
+  countrycolor = toRGB("gray80")
+)
+
+plot_geo(color = I("red")) %>%
+  add_markers(
+    data = df_loc1_2019, x = ~longitude y = ~latitude, text = ~Destination,
+    size = ~Total, hoverinfo = "text", alpha = 0.5
+  ) %>%
+  add_segments(
+    data = group_by(flights, id),
+    x = ~start_lon, xend = ~end_lon,
+    y = ~start_lat, yend = ~end_lat,
+    alpha = 0.3, size = I(1), hoverinfo = "none"
+  ) %>%
+  layout(geo = geo, showlegend = FALSE)
+
+
+  
 
 df_den <- df_
 hcd <- as.dendrogram(hc)
