@@ -202,17 +202,45 @@ head(df_comb,20)
 
 ```
 
-```
+
 # Exploratory Data Analysis on countries of destination and origin
 
-Data set contains historical data on migration for the years 1990, 1995, 2005, 2015 and 2019. There are many ways these dataset can be slided and diced. We will focus on the top countries of destination and origin.
+Data set contains historical data on migration for the years 1990, 1995,2000, 2005,2010, 2015 and 2019. There are many ways these dataset can be slided and diced. 
+
+Quick summary:
 
 ```{r}
-df_top<- df_comb %>%
+(df_top<- df_comb %>%
   group_by(Year) %>%
-  filter(!is.na(CountryCode), Total>1000000) %>%
-  summarize(count=n(), sum=sum(Total))
+  filter((CountryCode)>0) %>%
+  summarize(count=n(), Total=sum(Total, na.rm = TRUE)))
 ```
+
+Some examples:
+
+Number of international migrants by major area of destination
+```{r}
+
+```
+
+International migrants as a percentage of total population by major area of destination
+```{r}
+
+```
+
+Twenty countries or areas hosting the largest numbers of international migrants (millions)
+```{r}
+
+```
+
+Twenty countries or areas of origin with the largest diaspora populations (millions)
+```{r}
+
+```
+
+
+
+
 
 
 
