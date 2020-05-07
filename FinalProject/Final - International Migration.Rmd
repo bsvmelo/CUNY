@@ -5,51 +5,196 @@ date: "5/3/2020"
 output: html_document
 ---
 
+# International Migration
+# Visualization of migration flows over time
+# What makes the top 20 destination countries attractive
+# Can we predict next country in the club, based on indicators?
+# Cluster analysis on World Bank Income group
+
+
 ```{r}
 library(tidyverse)
-
-install.packages("readxl")
 library(readxl)
+library(lubridate)
+
+
 
 
 
 # Data loading and data frame wrangling
 
 # Files location
-link_1<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/Table%201.csv"
+link_1<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/undata1.csv"
 
 link_2<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/ANNEX.csv"
+
+link_3<- xxxxx
 
 #loading data frames
 
 #Contains Destination and Origin information per year
-dt_start<-read.csv(link_1,header=FALSE, sep=",") %>% data.frame(stringsAsFactors = FALSE)
+dt_migr<-read_csv(link_1, col_names = FALSE, skip=14, guess_max = 1000, col_types = cols(.default = col_character()),  locale = locale(grouping_mark = ",")) %>% data.frame()
+dt_migr1<-dt_migr
+# year column set to do col_types = cols(.default = col_character()), glimpse(dt_migr,20)
 
-#Contains World Bank's Income group classification of each country 
-dt_annex<-read.csv(link_2,header=FALSE, sep=",") %>% data.frame(stringsAsFactors = FALSE)
-
-
-# dt_start
-
-# inspecting data frame
-head(dt_start,20)
-
-# It can be seen that relevant data starts from rows 15 onwards, so let's remove first 14 rows
-dt_main<-dt_start[-c(1:14),]
-head(dt_main,10)
-# rows 15 and 16 are the headers, so let's manipulate these rows and transform them into headers
-# Let's retain columns 1 to 6 from row 15 and columns 7 to 241 from row 16
-dt_main[1,c(7:241)]<-dt_main[2,c(7:241)]
-dt_main<-dt_main[-c(2),] 
-# Renaming headers with row 1 values and removing first row
-names(dt_main) <- unname(unlist(dt_main[1,]))
-dt_main <- dt_main[-1,]
-# Renaming column 3 and column 6
-dt_main<-rename(dt_main,Destination=names(dt_main)[3])
-dt_main<-rename(dt_main,TypeData=names(dt_main)[6])
-head(dt_main,10)
+#Contains UN Development groups and World Bank's Income group classifications of each country 
+dt_annex<-read.csv(link_2,header=FALSE, sep=",", stringsAsFactors = FALSE, skip = 15) %>% data.frame()
+dt_group1<-dt_annex
+#Contains World Bank's indices dataset
 
 ```
+
+# Destination and Origin data set
+This is the main data set, it contains migration stock from several years for all countries in the world. It also contains info on some country classification.
+
+```{r}
+# inspecting data frame
+head(dt_migr1,20)
+
+# rows 1 and 2 are the headers, so let's manipulate these rows and transform them into headers
+# Let's retain columns 1 to 6 from row 15 and columns 7 to 241 from row 16
+dt_migr1[1,c(7:241)]<-dt_migr1[2,c(7:241)]
+dt_migr1<-dt_migr1[-c(2),] 
+# Renaming headers with row 1 values and removing first row
+names(dt_migr1) <- unname(unlist(dt_migr1[1,]))
+dt_migr1 <- dt_migr1[-1,]
+# converting columns
+dt_migr1<-type_convert(dt_migr1)
+dt_migr1[,1]<-year(parse_date(as.character(dt_migr1[,1]),"%Y"))
+# Renaming column 3, column 6
+dt_migr1<-rename(dt_migr1,Destination=names(dt_migr1)[3])
+dt_migr1<-rename(dt_migr1,TypeData=names(dt_migr1)[6])
+
+#Dimension and quick visualization of data frame
+dim(dt_migr1)
+head(dt_migr1,20)
+
+```
+
+# UN Development groups and World Bank's Income group classifications of each country
+This is an auxiliary data set that contains country classification by UN Development and World Bank's Income groups.
+
+```{r}
+# dt_group1
+
+# inspecting data frame
+head(dt_group1,10)
+# row 1 is the header, so let's manipulate it transforming it the dataset header
+names(dt_group1) <- unname(unlist(dt_group1[1,]))
+dt_group1 <- dt_group1[-1,]
+# Renaming column 2, column 5
+dt_group1<-rename(dt_group1,Region=names(dt_group1)[2])
+dt_group1<-rename(dt_group1,TypeData=names(dt_group1)[5])
+#dt_group1<-type_convert(dt_group1)
+#Dimension and quick visualization of data frame
+dim(dt_group1)
+head(dt_group1,20)
+```
+
+Cross reference is type factor but we need to convert to Logical
+
+```{r}
+dt_group1[,c(6:15)] <- ifelse(dt_group1[,c(6:15)] == "Y", TRUE, FALSE)
+dt_group1<-type_convert(dt_group1)
+```
+
+
+
+# UN and World Bank Classifications
+There are several classifications listed in the data set. They are defined in the first 20 or so rows. These are the classification / groups:
+
+1: UN development group: More developed, Less developed, least developed and Less developed ex-least
+2: World Bank Income groups: High-, Middle-, Upper-Middle-, Lower-Middle-, Low-, No Income
+3: Geographic Regions: Africa, Asia, Europe, Latin America & the Caribbean, Northern America, and Oceania.
+4: Sustainable Development Goal (SDG) 7 regions:Sub-Saharan Africa, Northern Africa and Western Asia, Central and Southern Asia, Eastern and South-Eastern Asia, Latin America and the Caribbean, Oceania, and Europe and Northern America. These regions are further divided into 22 geographic subregions.
+
+Cross reference is done by classification #1, #2 and 3 above. This will be enhanced with adding these specific codes to countries.  We also need to classify all countries by #4, as this will help with data set containing migration data.
+
+```{r}
+# UN development group
+un_grp<-data.frame(dt_migr1[c(3:6),c(3,5)])
+#un_grp$CountryCode<-as.numeric(un_grp$CountryCode)
+colnames(un_grp)<- c("UN Dev Group","UN Dev Code")
+
+# WB development group
+wb_income<-data.frame(dt_group1[c(8:13),c(2,4)])
+#wb_income$CountryCode<-as.integer(wb_income$CountryCode)
+colnames(wb_income)<- c("WB Income","WB Inc Code")
+# Geographic Regions
+geo_regions<-data.frame(dt_group1[c(15:20),c(2,4)])
+#geo_regions$`Geo Code`<-geo_regions$`Geo Code`
+colnames(geo_regions)<- c("Geo Regions","Geo Code")
+
+# First, define SDG list
+SDG<-(data.frame(c('Sub-Saharan Africa', 'Northern Africa and Western Asia', 'Central and Southern Asia', 'Eastern and South-Eastern Asia', 'Latin America and the Caribbean', 'Oceania', 'Europe and Northern America')))
+SDG<-toupper(SDG[,1])
+SDG<-data.frame(SDG)
+
+# Let's create a Region/Subregioncolumn for grouping
+dt_group1[,16:20] <- NA
+
+colnames(dt_group1)[16:20] <- c("RegionCode","Sub-RegionCode","CountryCode","UNCode", "WBCode")
+# Classifying
+for(i in 22:283) {
+  # this is a region
+  rc <- FALSE
+  if (dt_group1[i,2] %in% unlist(SDG[,1])){ 
+    rc<-TRUE
+    regioncode<-(dt_group1[i,4])
+    dt_group1[i,16]<- regioncode
+    }
+  # this is a sub region
+  if (sum(unlist(dt_group1[i,6:14])) == 0 & rc == FALSE) { 
+    subregioncode<-(dt_group1[i,4])
+    dt_group1[i,16]<- regioncode
+    dt_group1[i,17] <- subregioncode
+  }
+  # this is a country
+  if (sum(unlist(dt_group1[i,6:14])) >= 1) { 
+    dt_group1[i,16] <- regioncode 
+    dt_group1[i,17] <- subregioncode
+    dt_group1[i,18] <- dt_group1[i,4]
+    if (dt_group1[i,6] == TRUE) dt_group1[i,19]<-(un_grp[1,2])
+    if (dt_group1[i,7] == TRUE & dt_group1[i,8] == FALSE ) dt_group1[i,19]<-(un_grp[2,2])
+    if (dt_group1[i,7] == TRUE & dt_group1[i,8] == TRUE ) dt_group1[i,19]<-(un_grp[3,2])
+    if (dt_group1[i,9] == TRUE) dt_group1[i,20]<-(wb_income[1,2])
+    if (dt_group1[i,10] == TRUE) dt_group1[i,20]<-(wb_income[2,2])
+    if (dt_group1[i,11] == TRUE) dt_group1[i,20]<-(wb_income[3,2])
+    if (dt_group1[i,12] == TRUE) dt_group1[i,20]<-(wb_income[4,2])
+    if (dt_group1[i,13] == TRUE) dt_group1[i,20]<-(wb_income[5,2])
+    if (dt_group1[i,14] == TRUE) dt_group1[i,20]<-(wb_income[6,2])
+    
+    }
+}
+dt_group1<-type_convert(dt_group1)
+
+```
+
+#Re-arranging classification data and joining datasets
+On both datasets, first lines will be deleted given that classification info was retrieved in separate data frames
+```{r}
+dt_group2<-dt_group1[,-c(1,3,5:15),]
+dt_group2<-dt_group2[-c(2,7,14,21),]
+dt_group2<-dt_group2[,c(2,1,3:7)]
+
+#Joining country grouping data set into main migration data set
+df_comb <-left_join( dt_migr1, dt_group2[,-c(2)], by='Code' )
+df_comb <- df_comb[,c(5,1:4,6,242:246,7:241)]
+df_comb <- df_comb[,-c(5,6)]
+head(df_comb,20)
+```
+
+```
+# Exploratory Data Analysis
+
+Dendogram
+
+```{r}
+
+df_den <- df_
+hcd <- as.dendrogram(hc)
+```
+
 
 # Total migration per country of destination are located on the "Destination" horizontal column and contribution for that country of origin
 
