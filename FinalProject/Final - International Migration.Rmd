@@ -41,7 +41,10 @@ link_3<- xxxxx
 
 link_4<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/location1.csv"
 
-link_5<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/population.csv"
+link_5<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/population1.csv"
+
+comma<-function(x) format(x, digits=0, big.mark = ",")
+perc<-function(x) format(x, digits=2)
 
 #loading data frames
 
@@ -205,23 +208,26 @@ df_comb <-left_join( dt_migr1, dt_group2[,-c(2)], by='Code' )
 df_comb <- df_comb[,c(5,1:4,6,242:246,7:241)]
 df_comb <- df_comb[,-c(5,6)]
 
+df_comb1<-df_comb
+df_comb1$key1<-paste(df_comb1$Code,df_comb1$Year)
+
 #populatin data set
 dt_pop1<-dt_pop
 dt_pop1<-rename(dt_pop1,Destination=names(dt_pop1)[3])
 dt_pop1<-rename(dt_pop1,Code=names(dt_pop1)[5])
-names(dt_pop1)[7:14]<-c(1990,1995,2000,2005,2010,2015,2019,2020)
+names(dt_pop1)[7:14]<-c("1990","1995","2000","2005","2010","2015","2019","2020")
 dt_pop1<-dt_pop1[,-c(6)]
-df_comb1<-left_join(df_comb,dt_pop1, by='Code')
+# Gathering dataset
+dt_pop2<-gather(dt_pop1, `1990`,`1995`,`2000`,`2005`,`2010`,`2015`,`2019`,`2020`, key="Year", value="Population")
+dt_pop2<-type_convert(dt_pop2)
+dt_pop2$key1<-paste(dt_pop2$Code,dt_pop2$Year)
 
-head(df_comb,20)
+df_comb1<-left_join(df_comb1, dt_pop2[,-c(1:6)], by='key1')
+df_comb1<-select(df_comb1, Code:WBCode, Population, everything())
+df_comb1$Population<-df_comb1$Population*1000
+df_comb1<-rename(df_comb1,TotalMigration=names(df_comb1)[11])
 
-```
-
-
-# Re-arranging population dataset
-
-```{r}
-
+head(df_comb1,20)
 
 ```
 
@@ -233,11 +239,26 @@ Data set contains historical data on migration for the years 1990, 1995,2000, 20
 Quick summary:
 
 ```{r}
-(df_top<- df_comb %>%
+(df_1<- df_comb1 %>%
   group_by(Year) %>%
   filter((CountryCode)>0) %>%
-  summarize(count=n(), Total=sum(Total, na.rm = TRUE)))
+  summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE)))
 ```
+
+Graphically:
+
+```{r}
+(df_2<- df_comb1 %>%
+  group_by(Year, WBCode) %>%
+  filter((CountryCode)>0) %>%
+  summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(Year, MigrPop))+
+  geom_line(alpha =1/3)+
+  facet_wrap(~WBCode, label_value(wb_income$`WB Income`)))
+
+```
+
+
 
 Some examples:
 
