@@ -22,12 +22,21 @@ library(readxl)
 library(lubridate)
 library(leaflet)
 library(plotly)
+library(GGally)
 
+library(viridis)
+library(patchwork)
+library(hrbrthemes)
+library(circlize)
+library(ggalluvial)
 install.packages("leaflet")
 install.packages("plotly")
-
-
-
+install.packages("GGally")
+install.packages("viridis")
+install.packages("patchwork")
+install.packages("hrbrthemes")
+install.packages("circlize")
+install.packages("ggalluvial")
 
 
 # Data loading and data frame wrangling
@@ -153,6 +162,8 @@ colnames(geo_regions)<- c("Geo Regions","Geo Code")
 SDG<-(data.frame(c('Sub-Saharan Africa', 'Northern Africa and Western Asia', 'Central and Southern Asia', 'Eastern and South-Eastern Asia', 'Latin America and the Caribbean', 'Oceania', 'Europe and Northern America')))
 SDG<-toupper(SDG[,1])
 SDG<-data.frame(SDG)
+SDG[,2]<-c(947,1833,921,1832,1830,909,1829)
+colnames(SDG)[2]<-"SDGCode"
 
 # Let's create a Region/Subregioncolumn for grouping
 dt_group1[,16:20] <- NA
@@ -192,6 +203,13 @@ for(i in 22:283) {
 }
 dt_group1<-type_convert(dt_group1)
 
+# Summary of WB classification
+(dt_group1 %>%
+   select(CountryCode, Region, WBCode) %>%
+   group_by(WBCode)  %>%
+  filter( CountryCode > 0) %>%
+  summarize(coun=n()))
+
 ```
 
 
@@ -229,51 +247,178 @@ df_comb1<-rename(df_comb1,TotalMigration=names(df_comb1)[11])
 
 head(df_comb1,20)
 
+(df_comb1 %>%
+   select(CountryCode, Destination, WBCode, Year) %>%
+   group_by(Year, WBCode)  %>%
+  filter( CountryCode > 0 ) %>%
+  summarize(coun=n()))
+
+
 ```
 
 
-# Exploratory Data Analysis on countries of destination and origin
+# Exploratory Data Analysis on migration trend on countries of destination and origin
 
-Data set contains historical data on migration for the years 1990, 1995,2000, 2005,2010, 2015 and 2019. There are many ways these dataset can be slided and diced. 
+Data set contains historical data on migration for the years 1990, 1995,2000, 2005,2010, 2015 and 2019.  
 
-Quick summary:
+Here are some hipotheses I would like to test:
+
+1:We would like to find evidence that more developed, wealthier regions or countries attract more migrants. We could also verify whether the converse is also true, meaning that regions or countries which are less developed have more people leaving their borders.
+
+2:In terms of trend, we would like to check that countries becoming weathier over time, also tend to attract more people over time.
+
+Quick summary, showing the total of migrants in absolute and relative terms to the world population.
 
 ```{r}
 (df_1<- df_comb1 %>%
   group_by(Year) %>%
   filter((CountryCode)>0) %>%
   summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE)))
+
+
 ```
 
-Graphically:
+In aggregate, international migrants as a percentage of total population does not seem to be a high number. On average around 3% over the years. Let's dig deeper to get more insights.
+
+There are three different classifications in the combined data set. Let's show graphically the international migrants as a percentage of total population over time in order to check trends.
+
+1:Sustainable Development Goal (SDG)
+Let's analyse the major areas of migration destination by SDG region. Plot shows the number of international migrants by area of destination.
 
 ```{r}
+# function to label the facet wrap
+descr<-function(labval) {
+  labval<-SDG[match(labval,SDG$SDGCode),1]
+}
+
+(df_2<- df_comb1 %>%
+  group_by(Year, RegionCode) %>%
+  filter((CountryCode)>0) %>%
+  summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE)/1000000)  %>%
+  ggplot(aes(Year, TotalMigration, color = No_Countries))+
+  geom_line(alpha =1/3, size = 1) +
+  facet_wrap(~RegionCode, labeller=labeller(RegionCode = descr))+ 
+      labs(title = "Migration Trends over time",
+       subtitle = "(by Regions defined by the UN Sustainable Development Goals)",
+       y = "Migrants in mn", x = "Year")+
+    theme(strip.text = element_text(size=6, color="darkblue"))
+  
+  )
+```
+
+Major area of destination is Europe and Northern America, where most of the world's wealth is concentrated. Second largest area of destination is Northern Africa and Western Asia, where the high number of migrants could be associated with wealth driven by the oil-producing countries (and Israel) but also by geopolitical reasons, like wars and forced migration. In this group we find countries like Syria, Yemen, Turkey, and Iraq.
+
+In terms of trends, migration has increased over time in most regions.
+
+Let's check the number of migrants relative to the region total population.
+
+```{r}
+# plot 
+# function to label the facet wrap
+descr<-function(labval) {
+  labval<-SDG[match(labval,SDG$SDGCode),1]
+}
+(df_2<- df_comb1  %>%
+  group_by(Year, RegionCode) %>%
+  filter((CountryCode)>0) %>%
+  summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), `%Migration`=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(Year, `%Migration`, color = No_Countries))+
+  geom_line(alpha =1/3, size = 1) +
+  facet_wrap(~RegionCode, labeller=labeller(RegionCode = descr))+ 
+      labs(title = "Migration Trends as a Percentage of population",
+       subtitle = "(by Regions defined by the UN Sustainable Development Goals)",
+       y = "% of Migrants", x = "Year")+
+    theme(strip.text = element_text(size=6, color="darkblue"))
+  
+  )
+```
+
+Similarly to the previous charts, migrant stock relative to the total population is very relevant in Oceania, Europe/Northern America and in Northern Africa. As observed before, it seems it is related to wealth and to other forces.
+
+In terms of trend, migration seems to be increasing in these three regions but it is reasonably stable in the other regions. 
+
+There is some evidence in these charts to assume that migration is driven but both wealth and geopolitical reasons, based on geography only.
+
+2:World Bank Income classification
+The World Bank classifies the world's economies into four income groups — high, upper-middle, lower-middle, and low. They base this assignment on Gross National Income (GNI) per capita (current US$) calculated using the Atlas method. 
+
+```{r}
+# function to label the facet wrap
+descr<-function(labval) {
+  labval<-wb_income[match(labval,wb_income$`WB Inc Code`),1]
+}
+# plot 
 (df_2<- df_comb1 %>%
   group_by(Year, WBCode) %>%
   filter((CountryCode)>0) %>%
-  summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
-  ggplot(aes(Year, MigrPop))+
-  geom_line(alpha =1/3)+
-  facet_wrap(~WBCode, label_value(wb_income$`WB Income`)))
+  summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), `%Migration`=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(Year, `%Migration`, color = No_Countries))+
+  geom_line(alpha =1/3) +
+  facet_wrap(~WBCode, labeller=labeller(WBCode = descr))+
+    labs(title = "Migration Trends as a Percentage of population",
+       subtitle = "(by Regions defined by the World Bank Income classification)",
+       y = "% of Migrants", x = "Year")+
+    theme(strip.text = element_text(size=8, color="darkblue")))
 
 ```
 
+As evidenced before, high- and upper-middle-income countries are the groups attracting more migrants over time. Despite the fact that the no-income group has the highest percentage, we cannot draw any meaning conclusions for it is classified in the no income group.
 
-
-Some examples:
-
-Number of international migrants by major area of destination
+Let's analyse the twenty countries hosting the largest numbers of international migrants (millions)
 ```{r}
+# top 20 data set over the years
+df_3<- df_comb1 %>%
+  group_by(Year) %>%
+  filter((CountryCode)>0) %>%
+  select(Year, Destination, TotalMigration, CountryCode) %>%
+  mutate(r=rank(desc(TotalMigration))) %>%
+  filter(r<=20)%>%
+  arrange(Year, desc(TotalMigration))
+df_3<-df_3[,-c(5)]
 
-```
+# top 20 in 2019, this to be used to track these countries total migration since 1990
+df_4<- df_3 %>%
+  filter(Year == 2019)
+df_4<-df_4[,-c(5)]
 
-International migrants as a percentage of total population by major area of destination
-```{r}
+df_5<-df_comb1 %>%
+  filter(CountryCode %in%df_4$CountryCode) %>%
+  select(Year, Destination, TotalMigration, CountryCode)
+#merging and spreading top 20 in 2019 with all top 20 since 1990
+df_6<-full_join(df_5,df_3)
+df_6[,c(3)]<-df_6[,c(3)]/1000000
 
-```
+df_6<- df_6 %>%
+filter(Destination != "United States of America")
 
-Twenty countries or areas hosting the largest numbers of international migrants (millions)
-```{r}
+df_6<-spread(df_6, key=Year, value = TotalMigration)
+
+df_6[is.na(df_6)] <- 0
+
+
+(ggparcoord(df_6, columns = 3:9, groupColumn = 1, scale="globalminmax", alphaLines = 0.5, title = "Countries hosting the largest numbers of migrants") + 
+ theme( plot.title = element_text(size=10)) + ylab("Migrants in mn"))
+
+# requires(ggplot2)
+# requires(ggalluvial)
+
+# faking the data for 20 patients
+set.seed(42)
+individual <- as.character(rep(1:20,each=5))
+timeperiod <- paste0(rep(c(0, 18,36,54,72),20),"_week")
+therapy <- factor(sample(c("Etanercept", "Infliximab", "Rituximab",  "Adalimumab","Missing"), 100, replace=T))
+d <- data.frame(individual, timeperiod, therapy)
+head(d)
+
+# Plotting it
+ggplot(d, aes(x = timeperiod, stratum = therapy, alluvium = individual, fill = therapy, label = therapy)) +
+  scale_fill_brewer(type = "qual", palette = "Set2") +
+  geom_flow(stat = "alluvium", lode.guidance = "rightleft", color = "darkgray") +
+  geom_stratum() +
+  theme(legend.position = "bottom") +
+  ggtitle("Treatment across observation period")
+
+
 
 ```
 
@@ -407,5 +552,8 @@ hcd <- as.dendrogram(hc)
 
 ```{r}
 dt_main_19 <- filter( dt_main, Year == 2019 )
+
+data<-iris
+
 ```
 
