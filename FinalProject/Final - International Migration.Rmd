@@ -250,7 +250,22 @@ df_comb1<-select(df_comb1, Code:WBCode, Population, everything())
 df_comb1$Population<-df_comb1$Population*1000
 df_comb1<-rename(df_comb1,TotalMigration=names(df_comb1)[11])
 
-head(df_comb1,20)
+#region dataset
+
+df_region<-gather(dt_migr1, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
+df_region[,c(12:16)]<-dt_group1[match(df_region[,c(10)],dt_group1$Region),16:20]
+colnames(df_region)[(12:16)]<-c("RegionCodeOrigin","Sub-RegionCodeOrigin","CountryCodeOrigin","UNCodeOrigin", "WBCodeOrigin")
+df_region<-df_region %>%
+  filter(Code %in%  wb_income$`WB Inc Code`) %>%
+  group_by(Year, Destination, Code, WBCodeOrigin)%>%
+  summarise(total=sum(TotalOrigin, na.rm=TRUE))
+  
+
+df_region[8,5]
+
+df_region<-left_join( df_region, dt_group2[,-c(2)], by='Code' )
+colnames(df_region)[(17:21)]<-c("RegionCodeDest","Sub-RegionCodeDest","CountryCodeDest","UNCodeDest", "WBCodeDest")
+
 
 (df_comb1 %>%
    select(CountryCode, Destination, WBCode, Year) %>%
@@ -262,7 +277,7 @@ head(df_comb1,20)
 ```
 
 
-# Exploratory Data Analysis on migration trend on countries of destination and origin
+# Exploratory Data Analysis on migration trend on regions and countries of destination and origin
 
 Data set contains historical data on migration for the years 1990, 1995,2000, 2005,2010, 2015 and 2019.  
 
@@ -285,7 +300,42 @@ Quick summary, showing the total of migrants in absolute and relative terms to t
 
 In aggregate, international migrants as a percentage of total population does not seem to be a high number. On average around 3% over the years.
 
-There are three different classifications in the combined data set. Let's show graphically the international migrants as a percentage of total population over time in order to check trends.
+There are three different classifications in the combined data set. 
+
+Let'check migration flows between regions in 2019.
+```{r}
+
+
+data_long <- df_region%>%
+  filter(Year==2019, TotalOrigin>0, Code %in%  wb_income$`WB Inc Code`)%>%
+  group_by(WBCodeOrigin)%>%
+  summarise(TotalMigrants=sum(TotalOrigin)) %>%
+select(Origin, Destination,TotalOrigin)
+
+# parameters
+circos.clear()
+circos.par(start.degree = 90, gap.degree = 1, track.margin = c(-0.1, 0.1), points.overflow.warning = FALSE)
+par(mar = rep(0, 4))
+
+
+# Base plot
+chordDiagram(
+  x = data_long, 
+  transparency = 0.25,
+  directional = 1,
+  direction.type = c("arrows", "diffHeight"), 
+  diffHeight  = -0.04,
+  annotationTrack = "grid", 
+  annotationTrackHeight = c(0.05, 0.1),
+  link.arr.type = "big.arrow", 
+  link.sort = TRUE, 
+  link.largest.ontop = TRUE)
+
+```
+
+
+
+Let's show graphically the international migrants as a percentage of total population over time in order to check trends.
 
 1:Sustainable Development Goal (SDG)
 Let's analyse the major areas of migration destination by SDG region. Plot shows the number of international migrants by area of destination.
