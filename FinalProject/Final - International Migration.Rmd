@@ -34,6 +34,8 @@ library(networkD3)
 library(alluvial)
 library(treemapify)
 library(leaflet.minicharts)
+library(modelr)
+library("plm")
 
 install.packages("leaflet")
 install.packages("plotly")
@@ -48,7 +50,7 @@ install.packages("treemapify")
 install.packages("leaflet.minicharts")
 install.packages("RColorBrewer")
 install.packages("geosphere")
-
+install.packages("plm")
 # Data loading and data frame wrangling
 
 # Files location
@@ -56,11 +58,13 @@ link_1<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/unda
 
 link_2<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/ANNEX.csv"
 
-link_3<- xxxxx
+link_3<- "https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/econindicator.csv"
 
 link_4<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/location1.csv"
 
 link_5<-"https://raw.githubusercontent.com/bsvmelo/CUNY/master/FinalProject/population1.csv"
+
+
 
 comma<-function(x) format(x, digits=0, big.mark = ",")
 perc<-function(x) format(x, digits=2)
@@ -77,7 +81,7 @@ dt_annex<-read.csv(link_2,header=FALSE, sep=",", stringsAsFactors = FALSE, skip 
 dt_group1<-dt_annex
 
 #Contains World Bank's indices dataset
-
+dt_econ<-read_csv(link_3, col_names = TRUE, guess_max = 1000) %>% data.frame()
 
 #Contains latitute and longitude data for each country
 dt_loc<-read_csv(link_4, col_names = TRUE, guess_max = 100, locale = locale(decimal_mark = ".")) %>% data.frame()
@@ -759,12 +763,147 @@ Biggest flow to Turkey is from Syria due to recento geopolitical reasons. There'
 
 
 
-# # # Modelling
+### Relationshiop between Migration and Wealth
 
 From the visual inspections above, there's evidence to support that the more wealth a country has, the more migrants it attracts. There's also evidence that family ties play a role in the flow of migrants.
 
+Let's analyse the relationship between migration and three economic variables:   
+Gross National Income (GNI) per capita: as a measure of wealth - (converted to U.S. dollars using the World Bank Atlas method, divided by the midyear population)   
+GINI index: as a measure of inequality   
+Personal Remittances (received as % of GDP): as a measure of family ties   
+
 
 ```{r}
+#preparing dataset
+colnames(dt_econ)[2]<-"Destination"
+dt_econ[,c(6:10)]<-dt_group1[match(dt_econ[,c(2)],dt_group1$Region),16:20]
+
+df_econ<- df_comb1 %>%
+  filter((CountryCode)>0) %>%
+  select(Year, Destination, TotalMigration, CountryCode, RegionCode:Population, Afghanistan:Zimbabwe) %>%
+  mutate(TotalMigration = TotalMigration/1000000) %>%
+  arrange(Year, desc(TotalMigration))
+
+df_econ_long<-gather(df_econ, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
+df_econ_long<-mutate(df_econ_long,TotalOrigin=TotalOrigin/1000000)
+# calculate total origin migration total
+df_econ_long1 <- df_econ_long %>%
+  group_by(Origin) %>%
+  summarise(TotalOrigin=sum(TotalOrigin, na.rm=TRUE))
+colnames(df_econ_long1)[1]<-"Destination"
+# merging with destination dataset            
+df_econ1 <- left_join(df_econ[,-c(10:242)],df_econ_long1, by="Destination")
+#merging economic indices df with migration df
+df_index<-left_join(dt_econ,df_econ1) #by=c("Destination","Year")
+#df_index[,c(1)]<-as.Date(as.character(df_index[,c(1)]), format = "%Y")
+as.Date(as.character(date), format = "%Y%m%d")
+#nesting
+#df_index<-df_index %>%
+#  group_by(Destination) %>%
+#  unnest(Destination)
+```
+
+Visual inspection of GNI vs Total Migration by year and by income group.
+
+```{r}
+# function to label the facet wrap
+descr<-function(labval) {
+  labval<-wb_income[match(labval,wb_income$`WB Inc Code`),1]
+  labval<-str_remove(labval,"-income countries")
+}
+
+
+# plot 
+df_index %>%
+  #group_by(Year, WBCode) %>%
+  filter( !is.na(TotalMigration), !is.na(GNI), WBCode %in% c(1503,1502,1501,1500)) %>%
+  #summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), `%Migration`=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(TotalMigration, GNI)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+facet_grid(WBCode~Year, scale="free_y", labeller = labeller(WBCode=descr)) +
+  labs(title = "GNI per capita vs Total Migration - not scaled",
+       y = "GNI per capita in USD ", x = "Migration in mn")+
+    theme(strip.text = element_text(size=8, color="darkblue"))
+
+```
+
+Based on six years of data, there seems to be a direct relationship between GNI and number of migrants entering a country in countries in the Upper-middle and high income region, specially up to migration size of around 2-4 mn.
+
+Let's plot GINI index vs total exits.
+
+
+```{r}
+# plot 
+df_index %>%
+  #group_by(Year, WBCode) %>%
+  filter( !is.na(TotalOrigin), !is.na(Gini), TotalOrigin<10) %>%
+  #summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), `%Migration`=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(TotalOrigin, Gini)) +
+  geom_point() +
+  geom_smooth()+
+facet_wrap(~Year) +
+  labs(title = "Gini Index vs Exits",
+       y = "Gini Index", x = "Exits in mn")+
+    theme(strip.text = element_text(size=8, color="darkblue"))
+
+```
+
+A higher Gini index indicates greater inequality, with high income individuals receiving much larger percentages of the total income of the population.
+
+It looks like there's a direct relationship, when looking at exits lower than 10mn per year.
+
+Let's check if there's any evidence between the amount of remmitances received and total exits, as an indication of family ties, in Lower- and Low-income countries. 
+
+```{r}
+
+# plot 
+df_index %>%
+  #group_by(Year, WBCode) %>%
+  filter( !is.na(TotalMigration), !is.na(Personal), WBCode %in% c(1501,1500) , Personal<40, TotalMigration<2 )%>%
+  #summarize(No_Countries=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), `%Migration`=sum(TotalMigration) / sum(Population, na.rm=TRUE))  %>%
+  ggplot(aes(TotalMigration, Personal)) +
+  geom_point() +
+  
+facet_wrap(~Year, scale="free_y") +
+  labs(title = "Gini Index vs Exits",
+       y = "Remittances received % GDP", x = "Total Migration in mn")+
+    theme(strip.text = element_text(size=8, color="darkblue"))
+
+```
+
+Indication of a direct relationship between remmitances received and total migration, indicating some sort of family tie proxy.
+
+
+# Panel data regression analysis
+ 
+Let's build a panel data mode consisting of data for six years (199, 1995, 2000, 2005, 2010,2015) for the three variables analysed above: GNI, Gini index and remittances received.
+We will be using package plm (reference https://cran.r-project.org/web/packages/plm/vignettes/plmPackage.html)
+ 
+```{r}
+ #data frame set up
+df_plm<-df_index[,c(8,1,11,3,4,5)]
+reg <- pdata.frame(df_plm, index=c(1,2), drop.index=TRUE, row.names=TRUE)
+head(reg)
+head(as.matrix(reg$))
+```
+
+
+
+
+
+
+
+
+
+
+
+There is not enough data points in the Low income group to draw any conclusion.
+On the Lower-middle income group, there's an indication of indirect relationship between Gini and total of exits.
+On the Upper-middle income group, it seems no relationship is present.
+On the High-income group, there's an indication of direct relationship.
+```{r}
+
 df_long<- df_comb1 %>%
   filter((CountryCode)>0 & Year == 2019) %>%
   select(Year, Destination, TotalMigration, CountryCode, Afghanistan:Zimbabwe)
@@ -780,9 +919,6 @@ df_long[,c(20:21)]<-df_loc1[match(df_long[,c(11)],df_loc1$Destination),3:4]
 colnames(df_long)[(18:21)]<-c("DestLat","DestLon","OriginLat","OriginLon")
 df_long<-df_long[,c(1:17,21,20,19,18)]
 df_long<-df_long[-c(35),]
-```
-
-```{r}
 
 # map projection
 flows <- gcIntermediate(df_long[,18:19], df_long[,20:21], sp = TRUE, addStartEnd = TRUE)
@@ -830,7 +966,10 @@ leaflet(df_long) %>%
 ```
 
 
-###
+### Relationshiop between Migration and Wealth
+
+dt_econ
+
 
 
 
