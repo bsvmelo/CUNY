@@ -6,51 +6,48 @@ output: html_document
 ---
 
 # International Migration
+
 Project goal is to analyse international migration based on data obtained on the UN and World Bank data sites.
 
-Data set contains historical data on migration for the years 1990, 1995, 2005, 2015 and 2019. There are many ways these dataset can be slided and diced. We will focus on the top countries of destination and origin.
-# Visualization of migration flows over time
-# What makes the top 20 destination countries attractive
-# Can we predict next country in the club, based on indicators?
-# Cluster analysis on World Bank Income group
+Data set contains historical data on migration for the years 1990, 1995, 2005, 2015 and 2019. 
 
-# Data set-up
+Our objectives are:    
 
-```{r}
+1. Display graphically migration flows, migration trends over time, largest migration destination and origins.
+
+2.Find evidence that more developed, wealthier regions or countries attract more migrants. We could also verify whether the converse is also true, meaning that regions or countries which are less developed have more people leaving their borders.
+
+3.In terms of trend, we would like to check that countries becoming weathier over time, also tend to attract more people over time.
+
+
+
+**1. Data set-up**
+
+```{r echo=FALSE}
+
+if(!require(leaflet)) install.packages("leaflet",repos = "http://cran.us.r-project.org")
+if(!require(viridis)) install.packages("viridis",repos = "http://cran.us.r-project.org")
+if(!require(circlize)) install.packages("circlize",repos = "http://cran.us.r-project.org")
+if(!require(RColorBrewer)) install.packages("RColorBrewer",repos = "http://cran.us.r-project.org")
+if(!require(plm)) install.packages("plm",repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse",repos = "http://cran.us.r-project.org")
+if(!require(readxl)) install.packages("readxl",repos = "http://cran.us.r-project.org")
+if(!require(lubridate)) install.packages("lubridate",repos = "http://cran.us.r-project.org")
+if(!require(geosphere)) install.packages("geosphere",repos = "http://cran.us.r-project.org")
+if(!require(treemapify)) install.packages("treemapify",repos = "http://cran.us.r-project.org")
+
 library(tidyverse)
 library(readxl)
 library(lubridate)
 library(leaflet)
-library(plotly)
-library(GGally)
-library(treemapify)
 library(RColorBrewer)
-library(geosphere)
 library(viridis)
-library(patchwork)
-library(hrbrthemes)
 library(circlize)
-library(networkD3)
-library(alluvial)
+library(plm)
+library(geosphere)
 library(treemapify)
-library(leaflet.minicharts)
-library(modelr)
-library("plm")
 
-install.packages("leaflet")
-install.packages("plotly")
-install.packages("GGally")
-install.packages("viridis")
-install.packages("patchwork")
-install.packages("hrbrthemes")
-install.packages("circlize")
-install.packages("networkD3")
-install.packages("alluvial")
-install.packages("treemapify")
-install.packages("leaflet.minicharts")
-install.packages("RColorBrewer")
-install.packages("geosphere")
-install.packages("plm")
+
 # Data loading and data frame wrangling
 
 # Files location
@@ -91,12 +88,13 @@ dt_pop<-read_csv(link_5, col_names = TRUE, guess_max = 100, locale = locale(grou
 
 ```
 
-# Destination and Origin data set
+**2. Destination and Origin data set**
+
 This is the main data set, it contains migration stock from several years for all countries in the world. It also contains info on some country classification.
 
-```{r}
+```{r echo=FALSE}
 # inspecting data frame
-head(dt_migr1,20)
+head(dt_migr1,1)
 
 # rows 1 and 2 are the headers, so let's manipulate these rows and transform them into headers
 # Let's retain columns 1 to 6 from row 15 and columns 7 to 241 from row 16
@@ -112,20 +110,20 @@ dt_migr1[,1]<-year(parse_date(as.character(dt_migr1[,1]),"%Y"))
 dt_migr1<-rename(dt_migr1,Destination=names(dt_migr1)[3])
 dt_migr1<-rename(dt_migr1,TypeData=names(dt_migr1)[6])
 
-#Dimension and quick visualization of data frame
+#Dimension
 dim(dt_migr1)
-head(dt_migr1,20)
 
 ```
 
-# UN Development groups and World Bank's Income group classifications of each country
+**3. UN Development groups and World Bank's Income group classifications of each country**
+
 This is an auxiliary data set that contains country classification by UN Development and World Bank's Income groups.
 
-```{r}
+```{r echo=FALSE}
 # dt_group1
 
 # inspecting data frame
-head(dt_group1,10)
+head(dt_group1,1)
 # row 1 is the header, so let's manipulate it transforming it the dataset header
 names(dt_group1) <- unname(unlist(dt_group1[1,]))
 dt_group1 <- dt_group1[-1,]
@@ -135,19 +133,17 @@ dt_group1<-rename(dt_group1,TypeData=names(dt_group1)[5])
 #dt_group1<-type_convert(dt_group1)
 #Dimension and quick visualization of data frame
 dim(dt_group1)
-head(dt_group1,20)
+head(dt_group1,2)
 ```
 
 Cross reference is type factor but we need to convert to Logical
 
-```{r}
+```{r echo=FALSE}
 dt_group1[,c(6:15)] <- ifelse(dt_group1[,c(6:15)] == "Y", TRUE, FALSE)
 dt_group1<-type_convert(dt_group1)
 ```
 
-
-
-# UN and World Bank Classifications
+**4. UN and World Bank Classifications**
 There are several classifications listed in the data set. They are defined in the first 20 or so rows. These are the classification / groups:
 
 1: UN development group: More developed, Less developed, least developed and Less developed ex-least
@@ -157,7 +153,7 @@ There are several classifications listed in the data set. They are defined in th
 
 Cross reference is done by classification #1, #2 and 3 above. This will be enhanced with adding these specific codes to countries.  We also need to classify all countries by #4, as this will help with data set containing migration data.
 
-```{r}
+```{r echo=FALSE}
 # UN development group
 un_grp<-data.frame(dt_migr1[c(3:6),c(3,5)])
 #un_grp$CountryCode<-as.numeric(un_grp$CountryCode)
@@ -227,10 +223,11 @@ dt_group1<-type_convert(dt_group1)
 ```
 
 
-# Re-arranging classification and population data and joining datasets
+**5. Re-arranging classification and population data and joining datasets**
 
-On both datasets, first lines will be deleted given that classification info was retrieved in separate data frames
-```{r}
+On both datasets, first lines will be deleted given that classification info was retrieved in separate data frames.
+
+```{r echo=FALSE}
 dt_group2<-dt_group1[,-c(1,3,5:15),]
 dt_group2<-dt_group2[-c(2,7,14,21),]
 dt_group2<-dt_group2[,c(2,1,3:7)]
@@ -283,7 +280,7 @@ colnames(df_region)[(2:6)]<-c("RegionDest","CodeDest","CodeOrigin","RegionOrigin
 ```
 
 
-# Exploratory Data Analysis on migration trend on regions and countries of destination and origin
+#6. Exploratory Data Analysis on migration trend on regions and countries of destination and origin
 
 Data set contains historical data on migration for the years 1990, 1995,2000, 2005,2010, 2015 and 2019.  
 
@@ -294,10 +291,26 @@ Here are some hipotheses I would like to test:
 2:In terms of trend, we would like to check that countries becoming weathier over time, also tend to attract more people over time.
 
 
-First, let's check the total migration destination per country in 2019
+**6.1. First, let's check the total migration destination per country in 2019**
 
-```{r}
+```{r echo=FALSE}
 #dataset set up
+
+# location data
+df_loc1<-dt_loc
+df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
+# joining migration dataset with location dataset
+df_loc1<-left_join( df_loc1, df_comb, by='Destination' )
+# Gathering dataset
+df_loc2<-gather(df_loc1, (Afghanistan:Zimbabwe), key="Origin", value="TotalOrigin")
+# joining 
+df_loc3<-dt_loc
+df_loc3<-rename(df_loc3,Origin=names(df_loc3)[2])
+df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[3])
+df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[4])
+df_loc4<-left_join( df_loc2, df_loc3[,-c(1)], by='Origin' )
+
+
 df_long<- df_comb1 %>%
   filter((CountryCode)>0 & Year == 2019) %>%
   select(Year, Destination, TotalMigration, CountryCode, Afghanistan:Zimbabwe)
@@ -318,9 +331,9 @@ df_long<- df_long %>%
 
 ```
 
-Plotting
+World Map
 
-```{r}
+```{r echo=FALSE}
 # map projection
 hover <- paste0(df_long$Destination, " : ", 
                 as.character(round(df_long$TotalMigration/1000000, digits = 2))," mn")
@@ -338,10 +351,12 @@ Biggest migration destination is USA, followed by Germany, UK, France, Canada, R
 Arabia.     
 
 
-This is an interactive map, showing the main migration routes in 2019 between countries with more than 1mn migrants leaving their borders.
+**6.2 This is an interactive map, showing the main migration routes in 2019 between countries with more than 1mn migrants leaving their borders.**
 
-```{r}
+```{r echo=FALSE}
 #dataset set up
+
+
 df_long1<- df_comb1 %>%
   filter((CountryCode)>0 & Year == 2019) %>%
   select(Year, Destination, TotalMigration, CountryCode, Afghanistan:Zimbabwe)
@@ -359,9 +374,9 @@ df_long1<-df_long1[,c(1:17,21,20,19,18)]
 df_long1<-df_long1[-c(35),]
 ```
 
-Plotting
+Plot
 
-```{r}
+```{r echo=FALSE}
 # map projection
 flows <- gcIntermediate(df_long1[,18:19], df_long1[,20:21], sp = TRUE, addStartEnd = TRUE)
 
@@ -401,9 +416,9 @@ Syria to Turkey
 Ukraine to Russia     
 
 
-Using income-based classfication, below shows the flow of migrants between regions in 2019, as classified by the World Bank.
+**6.3 Using income-based classification, below shows the flow of migrants between regions in 2019, as classified by the World Bank.**
 
-```{r}
+```{r echo=FALSE}
 # preparing dataset
 data_long <- df_region[,c(1,5,2,6)] %>%
   filter(Year==2019)
@@ -417,9 +432,9 @@ data_long$RegionDest<-str_replace_all(data_long$RegionDest,"availble","")
 
 ```
 
-# Plot diagram
+Plot diagram
 
-```{r}
+```{r echo=FALSE}
 
 # parameters
 circos.clear()
@@ -469,25 +484,28 @@ circos.trackPlotRegion(
 
 As can be see, High-Income countries received the highest numbers of migrants, including from within its sector migration. Upper-middle-income group seems to have more migration than low-income group.
 
+**6.4 Aggregated migration numbers**
+
 In aggregate, international migrants as a percentage of total population does not seem to be a high number. On average around 3% over the years.
 
-```{r}
-(df_1<- df_comb1 %>%
+```{r echo=FALSE}
+df_1<- df_comb1 %>%
   group_by(Year) %>%
   filter((CountryCode)>0) %>%
-  summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE)))
+  summarize(count=n(), TotalMigration=sum(TotalMigration, na.rm = TRUE), Population=sum(Population, na.rm = TRUE), MigrPop=sum(TotalMigration) / sum(Population, na.rm=TRUE))
 
+(knitr::kable(df_1, caption= " Migration trend by total world population"))
 
 ```
 
-Exploring trends by different classifications. 
+**6.5 Exploring trends by different classifications. **
 
 Let's show graphically the international migrants as a percentage of total population over time in order to check trends.
 
-1:Sustainable Development Goal (SDG)
+1: Sustainable Development Goal (SDG)
 Let's analyse the major areas of migration destination by SDG region. Plot shows the number of international migrants by area of destination.
 
-```{r}
+```{r echo=FALSE}
 # function to label the facet wrap
 descr<-function(labval) {
   labval<-SDG[match(labval,SDG$SDGCode),1]
@@ -514,7 +532,7 @@ In terms of trends, migration has increased over time in most regions.
 
 Let's check the number of migrants relative to the region total population.
 
-```{r}
+```{r echo=FALSE}
 # plot 
 # function to label the facet wrap
 descr<-function(labval) {
@@ -544,7 +562,7 @@ There is some evidence in these charts to assume that migration is driven but bo
 2:World Bank Income classification
 The World Bank classifies the world's economies into four income groups — high, upper-middle, lower-middle, and low. They base this assignment on Gross National Income (GNI) per capita (current US$) calculated using the Atlas method. 
 
-```{r}
+```{r echo=FALSE}
 # function to label the facet wrap
 descr<-function(labval) {
   labval<-wb_income[match(labval,wb_income$`WB Inc Code`),1]
@@ -566,10 +584,11 @@ descr<-function(labval) {
 
 As evidenced before, high- and upper-middle-income countries are the groups attracting more migrants over time. Despite the fact that the no-income group has the highest percentage, we cannot draw any meaning conclusions for it as is classified in the no income group.
 
-# Countries
+**6.6 Migration by country**
+
 Let's analyse the proportion that each country hosts migrants in relation to the total migration number.
 
-```{r}
+```{r echo=FALSE}
 df_perc<-df_comb1
 df_perc <- df_perc  %>%
  filter((CountryCode)>0 & Year == 2019) %>%
@@ -589,7 +608,7 @@ head(df_perc, 20)
 
 It can be seen that 20 countries hosts around 2/3 of all migrants in the world. Let's analyse in more detail these twenty countries.
 
-```{r}
+```{r echo=FALSE}
 df_20<- df_comb1 %>%
   filter((CountryCode)>0 & Year == 2019) %>%
   select(Year, Destination, TotalMigration, CountryCode, WBCode) %>%
@@ -611,9 +630,9 @@ geom_treemap_text(colour = "white",
 
 The USA is by far the most attractive country, representing 19% of all migrant destination in 2019. This could be annecdotally explained by the fact it is the wealthiest countries in the world and maybe also by the fact that it always had a big migrant population. The others countries are either wealthy or are located in problematic areas such as Turkey, Jordan.
 
-Let's visualize in more detail the biggest migration flows between the US and its top migrantion source. (greater than 1mn of migrants).
+**6.7 Let's visualize in more detail the biggest migration flows between the US and its top migrantion source. (greater than 1mn of migrants).**
 
-```{r}
+```{r echo=FALSE}
 
 #dataset
 df_20<- df_comb1 %>%
@@ -635,9 +654,9 @@ df_20_long<-df_20_long[,c(3,1,4)]
 
 ```
 
-#Plot
+Plot
 
-```{r}
+```{r echo=FALSE}
 # parameters
 circos.clear()
 circos.par(start.degree = -90, gap.degree = 1, track.margin = c(-0.1, 0.1), points.overflow.warning = FALSE)
@@ -686,9 +705,9 @@ circos.trackPlotRegion(
 
 Biggest migrants are from Mexico, China and India. This could be driven by not only economic reasons but by family ties.
 
-Let's analyse the flow to Turkey.
+**6.8 Let's analyse the flow to Turkey.**
 
-```{r}
+```{r echo=FALSE}
 
 #dataset
 df_20<- df_comb1 %>%
@@ -708,9 +727,9 @@ df_t_long<-df_t_long[,c(3,1,4)]
 
 ```
 
-#Plot
+Plot
 
-```{r}
+```{r echo=FALSE}
 # parameters
 circos.clear()
 circos.par(start.degree = 90, gap.degree = 1, track.margin = c(-0.1, 0.1), points.overflow.warning = FALSE)
@@ -762,18 +781,17 @@ Biggest flow to Turkey is from Syria due to recento geopolitical reasons. There'
 
 
 
-
-### Relationshiop between Migration and Wealth
+#7 Relationship between Migration and Wealth
 
 From the visual inspections above, there's evidence to support that the more wealth a country has, the more migrants it attracts. There's also evidence that family ties play a role in the flow of migrants.
 
-Let's analyse the relationship between migration and three economic variables:   
+**7.1 Let's analyse the relationship between migration and three economic variables:   **
 Gross National Income (GNI) per capita: as a measure of wealth - (converted to U.S. dollars using the World Bank Atlas method, divided by the midyear population)   
 GINI index: as a measure of inequality   
 Personal Remittances (received as % of GDP): as a measure of family ties   
 
 
-```{r}
+```{r echo=FALSE}
 #preparing dataset
 colnames(dt_econ)[2]<-"Destination"
 dt_econ[,c(6:10)]<-dt_group1[match(dt_econ[,c(2)],dt_group1$Region),16:20]
@@ -795,17 +813,12 @@ colnames(df_econ_long1)[1]<-"Destination"
 df_econ1 <- left_join(df_econ[,-c(10:242)],df_econ_long1, by="Destination")
 #merging economic indices df with migration df
 df_index<-left_join(dt_econ,df_econ1) #by=c("Destination","Year")
-#df_index[,c(1)]<-as.Date(as.character(df_index[,c(1)]), format = "%Y")
-as.Date(as.character(date), format = "%Y%m%d")
-#nesting
-#df_index<-df_index %>%
-#  group_by(Destination) %>%
-#  unnest(Destination)
+
 ```
 
-Visual inspection of GNI vs Total Migration by year and by income group.
+**7.2 Visual inspection of GNI vs Total Migration by year and by income group.**
 
-```{r}
+```{r echo=FALSE}
 # function to label the facet wrap
 descr<-function(labval) {
   labval<-wb_income[match(labval,wb_income$`WB Inc Code`),1]
@@ -830,10 +843,10 @@ facet_grid(WBCode~Year, scale="free_y", labeller = labeller(WBCode=descr)) +
 
 Based on six years of data, there seems to be a direct relationship between GNI and number of migrants entering a country in countries in the Upper-middle and high income region, specially up to migration size of around 2-4 mn.
 
-Let's plot GINI index vs total exits.
+**7.3 Let's plot GINI index vs total exits.**
 
 
-```{r}
+```{r echo=FALSE}
 # plot 
 df_index %>%
   #group_by(Year, WBCode) %>%
@@ -853,9 +866,9 @@ A higher Gini index indicates greater inequality, with high income individuals r
 
 It looks like there's a direct relationship, when looking at exits lower than 10mn per year.
 
-Let's check if there's any evidence between the amount of remmitances received and total exits, as an indication of family ties, in Lower- and Low-income countries. 
+**7.4 Let's check if there's any evidence between the amount of remmitances received and total exits, as an indication of family ties, in Lower- and Low-income countries. **
 
-```{r}
+```{r echo=FALSE}
 
 # plot 
 df_index %>%
@@ -866,7 +879,7 @@ df_index %>%
   geom_point() +
   
 facet_wrap(~Year, scale="free_y") +
-  labs(title = "Gini Index vs Exits",
+  labs(title = "Remittances received vs Total Migration",
        y = "Remittances received % GDP", x = "Total Migration in mn")+
     theme(strip.text = element_text(size=8, color="darkblue"))
 
@@ -875,547 +888,120 @@ facet_wrap(~Year, scale="free_y") +
 Indication of a direct relationship between remmitances received and total migration, indicating some sort of family tie proxy.
 
 
-# Panel data regression analysis
+#8 Panel data regression analysis
  
-Let's build a panel data mode consisting of data for six years (199, 1995, 2000, 2005, 2010,2015) for the three variables analysed above: GNI, Gini index and remittances received.
+Let's build a panel data mode consisting of data for six years (1990, 1995, 2000, 2005, 2010,2015) for the three variables analysed above: GNI, Gini index and remittances received.
+
 We will be using package plm (reference https://cran.r-project.org/web/packages/plm/vignettes/plmPackage.html)
- 
-```{r}
+
+**8.1 First model - total migration received:**
+
+TotalMigration ~ GNI  +Gini + PersonalRemittances
+
+```{r echo=FALSE}
  #data frame set up
-df_plm<-df_index[,c(8,1,11,3,4,5)]
-reg <- pdata.frame(df_plm, index=c(1,2), drop.index=TRUE, row.names=TRUE)
+df_plm<-df_index[,c(8,1,11,3,4,5)] 
+#%>%
+#filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
 head(reg)
-head(as.matrix(reg$))
-```
 
+reg_model <- plm(TotalMigration~GNI+Gini+Personal, data = reg, model = "within")
 
-
-
-
-
-
-
-
-
-
-There is not enough data points in the Low income group to draw any conclusion.
-On the Lower-middle income group, there's an indication of indirect relationship between Gini and total of exits.
-On the Upper-middle income group, it seems no relationship is present.
-On the High-income group, there's an indication of direct relationship.
-```{r}
-
-df_long<- df_comb1 %>%
-  filter((CountryCode)>0 & Year == 2019) %>%
-  select(Year, Destination, TotalMigration, CountryCode, Afghanistan:Zimbabwe)
-df_long<-gather(df_comb1, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
-df_long[,c(17:21)]<-dt_group1[match(df_long[,c(15)],dt_group1$Region),16:20]
-df_long<-df_long[,-c(3,12,13,14)]
-colnames(df_long)[(13:17)]<-c("RegionCodeOrigin","Sub-RegionCodeOrigin","CountryCodeOrigin","UNCodeOrigin", "WBCodeOrigin")
-df_long<- df_long %>%
-  filter(CountryCode >0, Year == 2019, TotalMigration>1000000, TotalOrigin>1000000)
-df_long[is.na(df_long)] <- 0 
-df_long[,c(18:19)]<-df_loc1[match(df_long[,c(3)],df_loc1$Destination),3:4]
-df_long[,c(20:21)]<-df_loc1[match(df_long[,c(11)],df_loc1$Destination),3:4]
-colnames(df_long)[(18:21)]<-c("DestLat","DestLon","OriginLat","OriginLon")
-df_long<-df_long[,c(1:17,21,20,19,18)]
-df_long<-df_long[-c(35),]
-
-# map projection
-flows <- gcIntermediate(df_long[,18:19], df_long[,20:21], sp = TRUE, addStartEnd = TRUE)
-
-flows$counts <- df_long$TotalOrigin/1000000
-
-flows$origins <- df_long$Origin
-
-flows$destinations <- df_long$Destination
-
-hover <- paste0(flows$origins, " to ", 
-                flows$destinations, ': ', 
-                as.character(flows$counts))
-
-pal <- colorFactor(brewer.pal(4, 'Set2'), flows$origins)
-
-leaflet() %>%
-  addProviderTiles('CartoDB.Positron') %>%
-  addPolylines(data = flows, weight = ~counts, label = hover, 
-               group = ~origins, color = ~pal(origins)) %>%
-  addLayersControl(overlayGroups = unique(flows$origins), 
-                   options = layersControlOptions(collapsed = FALSE))
-
-
-
-leaflet(df_long) %>% 
-  addTiles() %>% 
-  addCircles(lat= ~DestLat, lng = ~DestLon, weight = 1, radius =  ~sqrt(TotalMigration)*100) %>% 
-   # addLegend("bottomright", colors= c("#ffa500", "#13ED3F"), labels=df_long, title="Coffee places") %>%
-  addFlows(
-    df_long$OriginLon, df_long$OriginLat, df_long$DestLon, df_long$DestLat,
-    flow = df_long$TotalOrigin,
-    time = df_long$Year,
-      opacity = 0.5,
-  dir = 0,
- popup = popupArgs(labels = "Flow"),
- # maxFlow = max(abs(flow)),
-  minThickness = 1,
-  maxThickness = 20
-    
-  )
-
-
+summary (reg_model)
 
 ```
 
+p-value indicates that only GNI is statistically significant.
 
-### Relationshiop between Migration and Wealth
+**8.2 Second model - total migration exited:**
 
-dt_econ
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,13,3,4,5)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalOrigin~GNI+Gini+Personal, data = reg, model = "within")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# location data
-df_loc1<-dt_loc
-df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
-df_loc1<-rename(df_loc1,DestLat=names(df_loc1)[3])
-df_loc1<-rename(df_loc1,DestLon=names(df_loc1)[4])
-# joining migration dataset with location dataset
-df_all<-left_join( df_comb, df_loc1, by='Destination' )
-df_all<-select(df_all, Code:WBCode, country:DestLon, everything())
-
-# Gathering dataset
-df_all2<-gather(df_all, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
-
-# joining migration dataset with country of origin latitude and longitude data
-df_loc3<-dt_loc[,-c(1)]
-df_loc3<-rename(df_loc3,Origin=names(df_loc3)[1])
-df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[2])
-df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[3])
-df_loc4<-left_join(df_all2, df_loc3, by='Origin' )
-
-df_2019<- df_loc4 %>% 
-filter(Year == 2019 & (CountryCode)>0 & Destination == "Italy")
-
-# map projection
-geo <- list(
-  projection = list(
-    type = 'azimuthal equal area'
-    ),
-  showland = TRUE,
-  landcolor = toRGB("gray95"),
-  countrycolor = toRGB("gray80")
-)
-# plot
-plot_geo(color = I("red")) %>%
-  add_markers(
-    data = df_2019, x = ~DestLon,y = ~DestLat, text = ~Origin,
-    size = ~TotalOrigin*3, hoverinfo = "text", alpha = 0.5
-  ) %>%
-  add_segments(
-    data = group_by(df_2019, CountryCode),
-    x = ~df_2019$OriginLon, xend = ~df_2019$DestLon,
-    y = ~df_2019$OriginLat, yend = ~df_2019$DestLat,
-    alpha = 0.3, size = I(1), hoverinfo = "none"
-  ) %>%
-  layout(geo = geo, showlegend = FALSE)
-
-
-mutate(r=rank(desc(TotalMigration)))
+summary (reg_model)
 ```
 
+Model does not work, maybe because of lack of data.
 
-# visualization test
-```{r}
-df_loc1_2019<- df_loc1 %>% 
-filter(Year == 2019 & WBCode == 1500)
+**8.3 Let's filter for some countries and include only countries within the Low-Income groups.**
 
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(weight = 1,
-    radius =  ~sqrt(Total)*300)
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,13,3,4,5,10)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ), WBCode %in% c(1501,1500))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalOrigin~GNI+Gini+Personal, data = reg, model = "within")
 
-# airport locations
-air <- read.csv(
-  'https://plotly-r.com/data-raw/airport_locations.csv'
-)
-# flights between airports
-flights <- read.csv(
-  'https://plotly-r.com/data-raw/flight_paths.csv'
-)
-flights$id <- seq_len(nrow(flights))
-
-# map projection
-geo <- list(
-  projection = list(
-    type = 'azimuthal equal area',
-    ),
-  showland = TRUE,
-  landcolor = toRGB("gray95"),
-  countrycolor = toRGB("gray80")
-)
-
-plot_geo(color = I("red")) %>%
-  add_markers(
-    data = df_loc1_2019, x = ~longitude y = ~latitude, text = ~Destination,
-    size = ~Total, hoverinfo = "text", alpha = 0.5
-  ) %>%
-  add_segments(
-    data = group_by(flights, id),
-    x = ~start_lon, xend = ~end_lon,
-    y = ~start_lat, yend = ~end_lat,
-    alpha = 0.3, size = I(1), hoverinfo = "none"
-  ) %>%
-  layout(geo = geo, showlegend = FALSE)
-
-
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(~DestLon , ~DestLat, weight = 1, radius =  ~sqrt(Total)*300)
-
-
-df_loc1_2019<- df_all %>% 
-filter(Year == 1990 & WBCode == 1502)
-
-df_loc2_2019<- df_all2 %>% 
-filter(Destination == 'Mauritius' & WBCode == 1502)
-
-
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(weight = 1,
-    radius =  ~sqrt(Total)*300)
+summary (reg_model)
 ```
 
+Same, model does not work with migration exit data.
 
+**8.4 Let's focus on Total migration received for some countries within the High- and Low-Middle-Income groups.**
 
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,11,3,4,5,10)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ), WBCode %in% c(1503,1501))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalMigration~GNI+Gini+Personal, data = reg, model = "within")
 
+summary (reg_model)
 ```
 
+Again, only GNI is statistically signficant.
 
+**8.5 Instead of regression three variables, let's regress only one.**
 
+Gini index vs Exits
 
-df_4<-df_4[,-c(5)]
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,13,3,4,5,10)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ), WBCode %in% c(1503,1501))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalOrigin~Gini, data = reg, model = "within")
 
-# top 20 data set over the years
-df_3<- df_comb1 %>%
-  group_by(Year) %>%
-  filter((CountryCode)>0) %>%
-  select(Year, Destination, TotalMigration, CountryCode) %>%
-  mutate(r=rank(desc(TotalMigration))) %>%
-  filter(r<=20)%>%
-  arrange(Year, desc(TotalMigration))
-
-df_3<-df_3[,-c(5)]
-
-# top 20 in 2019, this to be used to track these countries total migration since 1990
-df_4<- df_3 %>%
-  filter(Year == 2019)
-df_4<-df_4[,-c(5)]
-
-df_5<-df_comb1 %>%
-  filter(CountryCode %in%df_4$CountryCode) %>%
-  select(Year, Destination, TotalMigration, CountryCode)
-#merging and spreading top 20 in 2019 with all top 20 since 1990
-df_6<-full_join(df_5,df_3)
-df_6[,c(3)]<-df_6[,c(3)]/1000000
-# Excluding USA
-#df_6<- df_6[,-c(4)] %>%
-#filter(Destination != "United States of America")
-
-df_6<-spread(df_6, key=Year, value = TotalMigration)
-(ggparcoord(df_6, columns = 2:8, groupColumn = 1, scale="globalminmax", alphaLines = 0.5, title = "Countries hosting the largest numbers of migrants") + 
- theme(plot.title = element_text(size=10)) + ylab("Migrants in mn"))
-
-df_7<-df_comb1 %>%
-  filter(CountryCode %in%df_4$CountryCode) %>%
-  select(Year, Destination, TotalMigration, CountryCode)
-#merging and spreading top 20 in 2019 with all top 20 since 1990
-df_7<-full_join(df_5,df_3)
-
- df_7 %>% 
-  mutate(TotalMigration = TotalMigration/1000000)  %>%
-   ggplot(aes(Year, TotalMigration))+
-  geom_line(alpha =1/3) +
-  facet_wrap(~Destination)+
-    labs(title = "Migration Trends as a Percentage of population",
-       subtitle = "(by Regions defined by the World Bank Income classification)",
-       y = "% of Migrants", x = "Year")+
-    theme(strip.text = element_text(size=8, color="darkblue"))
-
-Let's analyse the twenty countries or areas of origin with the largest diaspora populations.
-
-
-```{r}
-df_perc1<-df_all2
-df_perc1 <- df_perc1  %>%
- filter((CountryCode)>0 & Year == 2019 &!is.na(TotalOrigin)) %>%
- select(Origin, TotalOrigin) %>%
-group_by(Origin)  %>%
-nest()
-
-df_perc1$total<-rowSums(do.call(cbind, do.call(c, df_perc1$data)))
-xxx<-colSums(matrix(unlist(df_perc1$data), ncol=1, byrow=TRUE))
-df_perc1 %>% flatten %>% as.data.frame %>% rowSums
-
-df_perc1$total<-sum(unlist(df_perc1$data), na.rm = TRUE)
-  summarise(t=sum(TotalOrigin))
-  mutate(t=sum(TotalOrigin, na.rm=TRUE)) %>%
-
-
-    mutate(r=rank(desc(TotalOrigin))) %>%
-mutate(TotalOrigin = TotalOrigin/1000000)  %>%
- arrange(desc(TotalOrigin))%>% 
- mutate(Cumul = cumsum(TotalOrigin)/sum(TotalOrigin)*100) 
-
-ggplot(df_perc, aes(x=r, y=Cumul)) +
-    geom_point(alpha=0.7) +   labs(title = "Migration share by country",
-        y = "% of total migration", x = "Number of countries")+
-    theme(strip.text = element_text(size=8, color="darkblue"))
-
-head(df_perc, 20)
-
-
-
-
-
-
- 
+summary (reg_model)
 ```
 
-Twenty countries or areas of origin with the largest diaspora populations (millions)
-```{r}
+This is not a good model either.
 
+Let's try Remittances received vs Total Migration.
+
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,11,3,4,5,10)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalMigration~Personal, data = reg, model = "within")
+
+summary (reg_model)
 ```
 
+Model has a high p-value indicating it is stastically insignificant.
 
+Let's run again Total Migration received vs GNI.
 
+```{r echo=FALSE}
+df_plm<-df_index[,c(8,1,11,3,4,5,10)] %>%
+filter (Year %in% c(1990,1995, 2000, 2005, 2010,2015 ))
+reg <- pdata.frame(df_plm, index=c("CountryCode", "Year"), drop.index=TRUE, row.names=TRUE)
+reg_model <- plm(TotalMigration~GNI, data = reg, model = "within")
 
-
-
-
-Goal is to create a visualization output that displays migration flow
-
-```{r}
-# location data
-df_loc1<-dt_loc
-df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
-df_loc1<-rename(df_loc1,DestLat=names(df_loc1)[3])
-df_loc1<-rename(df_loc1,DestLon=names(df_loc1)[4])
-# joining migration dataset with location dataset
-df_all<-left_join( df_comb, df_loc1, by='Destination' )
-df_all<-select(df_all, Code:WBCode, country:DestLon, everything())
-
-# Gathering dataset
-df_all2<-gather(df_all, Afghanistan:Zimbabwe, key="Origin", value="TotalOrigin")
-
-# joining migration dataset with country of origin latitude and longitude data
-df_loc3<-dt_loc[,-c(1)]
-df_loc3<-rename(df_loc3,Origin=names(df_loc3)[1])
-df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[2])
-df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[3])
-df_loc4<-left_join(df_all2, df_loc3, by='Origin' )
+summary (reg_model)
 ```
 
-
-# visualization test
-
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(~DestLon , ~DestLat, weight = 1, radius =  ~sqrt(Total)*300)
+As indicated before, there's a strong statistical significance between total migration received and GNI. This could well be due to the fact that most of the migration is received by the most wealthy country, as indicated in the plots on top.
 
 
-df_loc1_2019<- df_all %>% 
-filter(Year == 1990 & WBCode == 1502)
+# Conclusion
 
-df_loc2_2019<- df_all2 %>% 
-filter(Destination == 'Mauritius' & WBCode == 1502)
+Project consisted of showing migration flows between countries and of trying to model and estimate which variables could dtermine such behaviour.
 
+It is very clear from the data, at least visually, that wealth and family ties play an important part in the migration flow. 
 
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(weight = 1,
-    radius =  ~sqrt(Total)*300)
-```
+Not neglegible is also geopolitical considerations, like wars.
 
-
-
-Dendogram
-
-```{r}
-
-
-# location data
-df_loc1<-dt_loc
-df_loc1<-rename(df_loc1,Destination=names(df_loc1)[2])
-# joining migration dataset with location dataset
-df_loc1<-left_join( df_loc1, df_comb, by='Destination' )
-# Gathering dataset
-df_loc2<-gather(df_loc1, (Afghanistan:Zimbabwe), key="Origin", value="TotalOrigin")
-# joining 
-df_loc3<-dt_loc
-df_loc3<-rename(df_loc3,Origin=names(df_loc3)[2])
-df_loc3<-rename(df_loc3,OriginLat=names(df_loc3)[3])
-df_loc3<-rename(df_loc3,OriginLon=names(df_loc3)[4])
-df_loc4<-left_join( df_loc2, df_loc3[,-c(1)], by='Origin' )
-
-df_loc1_2019<- df_loc1 %>% 
-filter(Year == 2019 & WBCode == 1500)
-
-leaflet(df_loc1_2019) %>% 
-  addTiles() %>% 
-  addCircles(weight = 1,
-    radius =  ~sqrt(Total)*300)
-
-# airport locations
-air <- read.csv(
-  'https://plotly-r.com/data-raw/airport_locations.csv'
-)
-# flights between airports
-flights <- read.csv(
-  'https://plotly-r.com/data-raw/flight_paths.csv'
-)
-flights$id <- seq_len(nrow(flights))
-
-# map projection
-geo <- list(
-  projection = list(
-    type = 'orthographic',
-    rotation = list(lon = -100, lat = 40, roll = 0)
-  ),
-  showland = TRUE,
-  landcolor = toRGB("gray95"),
-  countrycolor = toRGB("gray80")
-)
-
-plot_geo(color = I("red")) %>%
-  add_markers(
-    data = df_loc1_2019, x = ~longitude y = ~latitude, text = ~Destination,
-    size = ~Total, hoverinfo = "text", alpha = 0.5
-  ) %>%
-  add_segments(
-    data = group_by(flights, id),
-    x = ~start_lon, xend = ~end_lon,
-    y = ~start_lat, yend = ~end_lat,
-    alpha = 0.3, size = I(1), hoverinfo = "none"
-  ) %>%
-  layout(geo = geo, showlegend = FALSE)
-
-
-  
-
-df_den <- df_
-hcd <- as.dendrogram(hc)
-```
-
-
-# Total migration per country of destination are located on the "Destination" horizontal column and contribution for that country of origin
-
-```{r}
-data <- read.table("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/13_AdjacencyDirectedWeighted.csv", header=TRUE)
-colnames(data) <- c("Africa", "East Asia", "Europe", "Latin Ame.",   "North Ame.",   "Oceania", "South Asia", "South East Asia", "Soviet Union", "West.Asia")
-rownames(data) <- colnames(data)
-data_long <- data %>%
-  rownames_to_column %>%
-  gather(key = 'key', value = 'value', -rowname)
-
-data_long <- df_loc4%>%
-  filter(CountryCode>0, Year==2019, TotalOrigin>0)%>%
-select(Origin, Destination,TotalOrigin)
-
-# parameters
-circos.clear()
-circos.par(start.degree = 90, gap.degree = 4, track.margin = c(-0.1, 0.1), points.overflow.warning = FALSE)
-par(mar = rep(0, 4))
-
-# color palette
-mycolor <- viridis(10, alpha = 1, begin = 0, end = 1, option = "D")
-mycolor <- mycolor[sample(1:5)]
-
-# Base plot
-chordDiagram(
-  x = data_long, 
-  
-  transparency = 0.25,
-  directional = 1,
-  direction.type = c("arrows", "diffHeight"), 
-  diffHeight  = -0.04,
-  annotationTrack = "grid", 
-  annotationTrackHeight = c(0.05, 0.1),
-  link.arr.type = "big.arrow", 
-  link.sort = TRUE, 
-  link.largest.ontop = TRUE)
-
-# Add text and axis
-circos.trackPlotRegion(
-  track.index = 1, 
-  bg.border = NA, 
-  panel.fun = function(x, y) {
-    
-    xlim = get.cell.meta.data("xlim")
-    sector.index = get.cell.meta.data("sector.index")
-    
-    # Add names to the sector. 
-    circos.text(
-      x = mean(xlim), 
-      y = 3.2, 
-      labels = sector.index, 
-      facing = "bending", 
-      cex = 0.8
-      )
-
-    # Add graduation on axis
-   # circos.axis(
-  #    h = "top", 
-   #   major.at = seq(from = 0, to = xlim[2], by = ifelse(test = xlim[2]>10, yes = 2, no = 1)), 
-  #    minor.ticks = 1, 
-  #    major.tick.percentage = 0.5,
-   #   labels.niceFacing = FALSE)
-  }
-)
-
-# parameters
-circos.clear()
-circos.par(start.degree = 90, gap.degree = 1, track.margin = c(-0.1, 0.1), points.overflow.warning = FALSE)
-par(mar = rep(0, 4))
-
-
-# Base plot
-chordDiagram(
-  x = data_long, 
-  transparency = 0.25,
-  directional = 1,
-  direction.type = c("arrows", "diffHeight"), 
-  diffHeight  = -0.04,
-  annotationTrack = "grid", 
-  annotationTrackHeight = c(0.05, 0.1),
-  link.arr.type = "big.arrow", 
-  link.sort = TRUE, 
-  link.largest.ontop = TRUE)
-
-```
-
-
-
-
-
-
-
+Statiscally, we could only demonstrate that GNI as a measure of wealth is significant in explaning migration flows. There are many more variables that could be explored, and this is left for a future work.
 
